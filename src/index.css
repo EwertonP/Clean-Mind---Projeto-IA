@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #192F28;
+  --color-brand-secondary: #A5B0A5;
+  --color-brand-cream: #ECE5D5;
+  --color-bg-primary: #FBFBFA;
+  --color-status-danger: #DE3737;
+  --color-status-success: #2D8A4E;
+  --font-serif: "Inter", sans-serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+@layer utilities {
+  @keyframes fadeIn {
+    from { 
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+}

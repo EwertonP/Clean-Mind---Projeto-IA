@@ -1,0 +1,6 @@
+{
+  "name": "CleanMind",
+  "description": "SRES de alto padrão para Psicólogos e Psiquiatras com Diário do Paciente analisado por IA e triagem preventiva.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

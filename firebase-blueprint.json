@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "Doctor": {
+      "title": "Doctor",
+      "description": "Doctor profile",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "crp_crm": { "type": "string" },
+        "rqe": { "type": "string" },
+        "cpf": { "type": "string" },
+        "phone": { "type": "string" },
+        "specialty": { "type": "string" },
+        "plan_type": { "type": "string" }
+      },
+      "required": ["email", "name", "crp_crm", "specialty"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Patient information",
+      "type": "object",
+      "properties": {
+        "doctor_id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "health_insurance": { "type": "string" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["doctor_id", "name", "email", "phone", "status", "created_at"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Appointments for patients",
+      "type": "object",
+      "properties": {
+        "patient_id": { "type": "string" },
+        "doctor_id": { "type": "string" },
+        "date": { "type": "string" },
+        "start_time": { "type": "string" },
+        "duration": { "type": "number" },
+        "type": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["patient_id", "doctor_id", "date", "start_time", "duration", "type", "status"]
+    },
+    "Billing": {
+      "title": "Billing",
+      "description": "Billing records",
+      "type": "object",
+      "properties": {
+        "patient_id": { "type": "string" },
+        "doctor_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "due_date": { "type": "string" },
+        "status": { "type": "string" },
+        "nfe_status": { "type": "string" },
+        "created_at": { "type": "string" },
+        "auto_emit_nfe": { "type": "boolean" }
+      },
+      "required": ["patient_id", "doctor_id", "amount", "due_date", "status", "nfe_status", "created_at", "auto_emit_nfe"]
+    },
+    "DiaryEntry": {
+      "title": "DiaryEntry",
+      "description": "Patient diary entries",
+      "type": "object",
+      "properties": {
+        "patient_id": { "type": "string" },
+        "content": { "type": "string" },
+        "sentiment_score": { "type": "number" },
+        "crisis_flag": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["patient_id", "content", "sentiment_score", "crisis_flag", "created_at"]
+    },
+    "MedicalRecord": {
+      "title": "MedicalRecord",
+      "description": "Medical records for patients",
+      "type": "object",
+      "properties": {
+        "patient_id": { "type": "string" },
+        "doctor_id": { "type": "string" },
+        "evolution_text": { "type": "string" },
+        "ai_summary": { "type": "string" },
+        "signature_status": { "type": "string" },
+        "signed_at": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["patient_id", "doctor_id", "evolution_text", "signature_status", "created_at"]
+    }
+  },
+  "firestore": {
+    "doctors/{doctorId}": {
+      "schema": { "$ref": "Doctor" },
+      "description": "Doctors collection"
+    },
+    "patients/{patientId}": {
+      "schema": { "$ref": "Patient" },
+      "description": "Patients collection"
+    },
+    "appointments/{appointmentId}": {
+      "schema": { "$ref": "Appointment" },
+      "description": "Appointments collection"
+    },
+    "billing/{billingId}": {
+      "schema": { "$ref": "Billing" },
+      "description": "Billing records collection"
+    },
+    "diary/{diaryId}": {
+      "schema": { "$ref": "DiaryEntry" },
+      "description": "Diary entries collection"
+    },
+    "medical_records/{recordId}": {
+      "schema": { "$ref": "MedicalRecord" },
+      "description": "Medical records collection"
+    }
+  }
+}

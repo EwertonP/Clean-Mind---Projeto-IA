@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null; // In AI Studio usually we skip email verification if it's not setup. Let's add it. No, instruction says:
+      // "You MUST strictly mandate that the user is verified using request.auth.token.email_verified == true (unless app explicitly supports anonymous users)"
+      // Let's check the instruction about email_verified:
+    }
+
+    function isDoctor() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidDoctor(data) {
+      return data.keys().hasAll(['email', 'name', 'crp_crm', 'specialty'])
+        && data.email is string && data.email.size() <= 200
+        && data.name is string && data.name.size() <= 200
+        && data.crp_crm is string && data.crp_crm.size() <= 100
+        && data.specialty is string && data.specialty.size() <= 200
+        && data.size() >= 4 && data.size() <= 8;
+    }
+
+    match /doctors/{doctorId} {
+      allow get: if isDoctor() && isValidId(doctorId) && request.auth.uid == doctorId;
+      allow list: if false; // doctors can only see themselves
+      
+      allow create: if isDoctor() && isValidId(doctorId) && request.auth.uid == doctorId
+        && isValidDoctor(incoming());
+        // For simplicity, we allow creators to define themselves since they sign up.
+        
+      allow update: if isDoctor() && isValidId(doctorId) && request.auth.uid == doctorId
+        && isValidDoctor(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'crp_crm', 'specialty', 'phone', 'cpf', 'rqe', 'plan_type']);
+    }
+
+    function isValidPatient(data) {
+      return data.keys().hasAll(['doctor_id', 'name', 'email', 'phone', 'status', 'created_at'])
+        && data.doctor_id is string && data.doctor_id == request.auth.uid
+        && data.name is string && data.name.size() <= 200
+        && data.email is string && data.email.size() <= 200
+        && data.phone is string && data.phone.size() <= 50
+        && data.status is string && data.status.size() <= 50
+        && data.created_at is string && data.created_at.size() <= 100
+        && data.size() >= 6 && data.size() <= 8;
+    }
+
+    match /patients/{patientId} {
+      allow read: if isDoctor() && isValidId(patientId) && existing().doctor_id == request.auth.uid;
+      allow list: if isDoctor() && resource.data.doctor_id == request.auth.uid;
+      
+      allow create: if isDoctor() && isValidId(patientId)
+        && isValidPatient(incoming())
+        && exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+        
+      allow update: if isDoctor() && isValidId(patientId) && existing().doctor_id == request.auth.uid
+        && isValidPatient(incoming())
+        && incoming().doctor_id == existing().doctor_id
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'phone', 'health_insurance', 'status']);
+        
+      allow delete: if isDoctor() && isValidId(patientId) && existing().doctor_id == request.auth.uid;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['patient_id', 'doctor_id', 'date', 'start_time', 'duration', 'type', 'status'])
+        && data.patient_id is string && data.patient_id.size() <= 128
+        && data.doctor_id is string && data.doctor_id == request.auth.uid
+        && data.date is string && data.date.size() <= 20
+        && data.start_time is string && data.start_time.size() <= 20
+        && data.duration is number
+        && data.type is string && data.type.size() <= 50
+        && data.status is string && data.status.size() <= 50
+        && data.size() >= 7 && data.size() <= 8;
+    }
+
+    match /appointments/{appId} {
+      allow read: if isDoctor() && isValidId(appId) && existing().doctor_id == request.auth.uid;
+      allow list: if isDoctor() && resource.data.doctor_id == request.auth.uid;
+      
+      allow create: if isDoctor() && isValidId(appId)
+        && isValidAppointment(incoming())
+        && get(/databases/$(database)/documents/patients/$(incoming().patient_id)).data.doctor_id == request.auth.uid;
+        
+      allow update: if isDoctor() && isValidId(appId) && existing().doctor_id == request.auth.uid
+        && isValidAppointment(incoming())
+        && incoming().doctor_id == existing().doctor_id
+        && incoming().patient_id == existing().patient_id
+        && incoming().diff(existing()).affectedKeys().hasOnly(['date', 'start_time', 'duration', 'type', 'status']);
+        
+      allow delete: if isDoctor() && isValidId(appId) && existing().doctor_id == request.auth.uid;
+    }
+
+    function isValidBilling(data) {
+      return data.keys().hasAll(['patient_id', 'doctor_id', 'amount', 'due_date', 'status', 'nfe_status', 'created_at', 'auto_emit_nfe'])
+        && data.patient_id is string && data.patient_id.size() <= 128
+        && data.doctor_id is string && data.doctor_id == request.auth.uid
+        && data.amount is number
+        && data.due_date is string && data.due_date.size() <= 50
+        && data.status is string && data.status.size() <= 50
+        && data.nfe_status is string && data.nfe_status.size() <= 50
+        && data.created_at is string && data.created_at.size() <= 100
+        && data.auto_emit_nfe is bool
+        && data.size() >= 8 && data.size() <= 9;
+    }
+
+    match /billing/{billId} {
+      allow read: if isDoctor() && isValidId(billId) && existing().doctor_id == request.auth.uid;
+      allow list: if isDoctor() && resource.data.doctor_id == request.auth.uid;
+      
+      allow create: if isDoctor() && isValidId(billId)
+        && isValidBilling(incoming())
+        && get(/databases/$(database)/documents/patients/$(incoming().patient_id)).data.doctor_id == request.auth.uid;
+        
+      allow update: if isDoctor() && isValidId(billId) && existing().doctor_id == request.auth.uid
+        && isValidBilling(incoming())
+        && incoming().doctor_id == existing().doctor_id
+        && incoming().patient_id == existing().patient_id
+        && incoming().created_at == existing().created_at
+        && incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'due_date', 'status', 'nfe_status', 'auto_emit_nfe']);
+        
+      allow delete: if isDoctor() && isValidId(billId) && existing().doctor_id == request.auth.uid;
+    }
+
+    function isValidDiaryEntry(data) {
+      // NOTE: Diaries don't explicitly have doctor_id in the model, only patient_id.
+      // So we have to verify patient is owned by doctor.
+      return data.keys().hasAll(['patient_id', 'content', 'sentiment_score', 'crisis_flag', 'created_at'])
+        && data.patient_id is string && data.patient_id.size() <= 128
+        && data.content is string && data.content.size() <= 100000
+        && data.sentiment_score is number
+        && data.crisis_flag is bool
+        && data.created_at is string && data.created_at.size() <= 100
+        && data.size() >= 5 && data.size() <= 6;
+    }
+
+    match /diary/{diaryId} {
+      // Since it lacks doctor_id, we MUST do a get() to patients to enforce read
+      allow read: if isDoctor() && isValidId(diaryId)
+        && get(/databases/$(database)/documents/patients/$(existing().patient_id)).data.doctor_id == request.auth.uid;
+        
+      allow list: if false; // Cannot list globally without doctor_id, unless we query by patient_id with client side, wait we can't secure list with get() per cost optimization clause: "You are strictly forbidden from placing get() or exists() document lookups inside allow list blocks."
+      // BUT actually, we CANNOT query `diary` safely if it lacks `doctor_id` without breaking the rule.
+      // If we MUST query by patient_id, we can check resource.data.patient_id in allow list? 
+      // But we don't know who owns the patient in `allow list` without `get()`.
+      // WAIT! The `data.ts` has no `doctor_id` on the diary. If we add `doctor_id` it fixes the issue and follows best practices. Let's assume we can add `doctor_id` as part of Firebase migration.
+    }
+  }
+}
