@@ -187,6 +187,15 @@ export const dataManager = {
     save('cm_patients', [...allPats, ...pats]);
     // Optionally firestore batch save, but we'll do individual items elsewhere
   },
+  updatePatient: (id: string, patData: Partial<Patient>): Patient | null => {
+    const list = dataManager.getPatients();
+    const idx = list.findIndex(p => p.id === id);
+    if (idx < 0) return null;
+    list[idx] = { ...list[idx], ...patData };
+    dataManager.savePatients(list);
+    persistToFirestore('patients', id, list[idx]);
+    return list[idx];
+  },
   addPatient: (pat: Omit<Patient, 'id' | 'doctor_id' | 'created_at'>): Patient => {
     const list = dataManager.getPatients();
     const newPat: Patient = {
@@ -242,6 +251,15 @@ export const dataManager = {
     const allBills = getOrInit<Billing[]>('cm_billing', INITIAL_BILLING).filter(b => b.doctor_id !== docId);
     save('cm_billing', [...allBills, ...bill]);
   },
+  updateBilling: (id: string, billData: Partial<Billing>): Billing | null => {
+    const list = dataManager.getBilling();
+    const idx = list.findIndex(b => b.id === id);
+    if (idx < 0) return null;
+    list[idx] = { ...list[idx], ...billData };
+    dataManager.saveBilling(list);
+    persistToFirestore('billing', id, list[idx]);
+    return list[idx];
+  },
   addBilling: (entry: Omit<Billing, 'id' | 'doctor_id' | 'created_at' | 'nfe_status'>): Billing => {
     const list = dataManager.getBilling();
     const patient = dataManager.getPatients().find(p => p.id === entry.patient_id);
@@ -267,6 +285,15 @@ export const dataManager = {
     const patientIds = dataManager.getPatients().map(p => p.id);
     const allEntries = getOrInit<DiaryEntry[]>('cm_diary', INITIAL_DIARY).filter(d => !patientIds.includes(d.patient_id));
     save('cm_diary', [...allEntries, ...entries]);
+  },
+  updateDiaryEntry: (id: string, updates: Partial<DiaryEntry>): DiaryEntry | null => {
+    const list = dataManager.getDiaryEntries();
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return null;
+    list[idx] = { ...list[idx], ...updates };
+    dataManager.saveDiaryEntries(list);
+    persistToFirestore('diary', id, list[idx]);
+    return list[idx];
   },
   addDiaryEntry: (patient_id: string, content: string): DiaryEntry => {
     const list = dataManager.getDiaryEntries();
@@ -343,6 +370,15 @@ export const dataManager = {
     persistToFirestore('medical_records', newRec.id, newRec);
     return newRec;
   },
+  updateMedicalRecord: (id: string, recData: Partial<MedicalRecord>): MedicalRecord | null => {
+    const list = dataManager.getMedicalRecords();
+    const idx = list.findIndex(r => r.id === id);
+    if (idx < 0) return null;
+    list[idx] = { ...list[idx], ...recData };
+    dataManager.saveMedicalRecords(list);
+    persistToFirestore('medical_records', id, list[idx]);
+    return list[idx];
+  },
   deleteMedicalRecord: (id: string): void => {
     const list = dataManager.getMedicalRecords();
     const filtered = list.filter(r => r.id !== id);
@@ -359,19 +395,9 @@ export const dataManager = {
       const apps = await getDocs(query(collection(db, 'appointments'), where('doctor_id', '==', doctorId)));
       const bills = await getDocs(query(collection(db, 'billing'), where('doctor_id', '==', doctorId)));
       const medical = await getDocs(query(collection(db, 'medical_records'), where('doctor_id', '==', doctorId)));
-      // Note: Diary doesn't have doctor_id directly. We can fetch it by patients.
-      const patientIds = pats.docs.map(p => p.id);
+      const diaryDocs = await getDocs(query(collection(db, 'diary'), where('doctor_id', '==', doctorId)));
       
-      const diaries = [];
-      if (patientIds.length > 0) {
-        // We can only query max 10 patient_id in 'in' clause, so just fetch all diary entries and filter by patient, or ignore for now
-        const diaryDocs = await getDocs(collection(db, 'diary'));
-        diaryDocs.forEach(d => {
-          if (patientIds.includes(d.data().patient_id)) {
-            diaries.push(d.data() as DiaryEntry);
-          }
-        });
-      }
+      const diaries = diaryDocs.docs.map(d => d.data() as DiaryEntry);
 
       dataManager.savePatients(pats.docs.map(d => d.data() as Patient));
       dataManager.saveAppointments(apps.docs.map(d => d.data() as Appointment));

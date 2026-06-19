@@ -116,11 +116,7 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
 
                     <button
                       onClick={() => {
-                        const allEntries = dataManager.getDiaryEntries();
-                        const updatedEntries = allEntries.map(e => 
-                          e.id === alert.id ? { ...e, crisis_flag: false } : e
-                        );
-                        dataManager.saveDiaryEntries(updatedEntries);
+                        dataManager.updateDiaryEntry(alert.id, { crisis_flag: false });
                         onNavigate('alertas'); // Just to trigger a refresh via parent if possible, or we need to pass a refresh trigger
                         // Actually, we can just call onNavigate('alertas') to trigger re-render? Wait, better pass a local state or triggerRefresh
                       }}

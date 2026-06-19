@@ -178,10 +178,11 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
     const index = list.findIndex(r => r.patient_id === selectedFormPatientId && r.signature_status === 'unsigned');
 
     if (index !== -1) {
-      list[index].evolution_text = evolutionText;
-      list[index].prontuario_text = prontuarioText;
-      list[index].ai_summary = aiSummary;
-      dataManager.saveMedicalRecords(list);
+      dataManager.updateMedicalRecord(list[index].id, {
+        evolution_text: evolutionText,
+        prontuario_text: prontuarioText,
+        ai_summary: aiSummary
+      });
     } else {
       dataManager.addMedicalRecord({
         patient_id: selectedFormPatientId,
@@ -221,26 +222,23 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
 
     const list = dataManager.getMedicalRecords();
     // Clear out any unsigned drafts first
-    const cleanList = list.filter(r => !(r.patient_id === selectedFormPatientId && r.signature_status === 'unsigned'));
+    const draft = list.find(r => r.patient_id === selectedFormPatientId && r.signature_status === 'unsigned');
+    if (draft) {
+      dataManager.deleteMedicalRecord(draft.id);
+    }
     
     // Add signed record
     const targetDocId = dataManager.getDoctor().id;
     const nowStr = new Date().toISOString();
     
-    const newRecord: MedicalRecord = {
-      id: `rec_signed_${Date.now()}`,
+    dataManager.addMedicalRecord({
       patient_id: selectedFormPatientId,
-      doctor_id: targetDocId,
       evolution_text: evolutionText,
       prontuario_text: prontuarioText,
       ai_summary: aiSummary,
       signature_status: 'signed_icp',
-      signed_at: nowStr,
-      created_at: nowStr
-    };
-
-    cleanList.push(newRecord);
-    dataManager.saveMedicalRecords(cleanList);
+      signed_at: nowStr
+    });
 
     setSignatureStatus('signed_icp');
     setSignedAt(nowStr);
@@ -248,10 +246,11 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
     onRefreshDashboard();
 
     // Refresh clinical list
+    const updatedList = dataManager.getMedicalRecords();
     if (filterPatientId) {
-      setHistory(cleanList.filter(r => r.patient_id === filterPatientId));
+      setHistory(updatedList.filter(r => r.patient_id === filterPatientId));
     } else {
-      setHistory(cleanList);
+      setHistory(updatedList);
     }
 
     setToastMessage(`Prontuário assinado`);
@@ -289,13 +288,10 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
   };
 
   const handleEditRecord = (record: MedicalRecord) => {
-    const list = dataManager.getMedicalRecords();
-    const recordIndex = list.findIndex(r => r.id === record.id);
-    if (recordIndex !== -1) {
-      list[recordIndex].signature_status = 'unsigned';
-      delete list[recordIndex].signed_at;
-      dataManager.saveMedicalRecords(list);
-    }
+    dataManager.updateMedicalRecord(record.id, {
+      signature_status: 'unsigned',
+      signed_at: undefined
+    });
     
     setSelectedFormPatientId(record.patient_id);
     setEvolutionText(record.evolution_text || '');

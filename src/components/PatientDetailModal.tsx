@@ -3,6 +3,7 @@ import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, Stic
 import { Patient, dataManager } from '../data';
 import Markdown from 'react-markdown';
 import jsPDF from 'jspdf';
+import { maskPhone } from '../utils/masks';
 
 interface PatientDetailModalProps {
   patient: Patient;
@@ -48,7 +49,7 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
       // Removing tags string so it is not saved on the object permanently as a string instead of string[]
       delete (allPatients[updateIndex] as any).tagsString;
       
-      dataManager.savePatients(allPatients);
+      dataManager.updatePatient(patient.id, editProfileForm);
       // Update local medical history state to reflect changes if edited here
       setMedicalHistory(editProfileForm.medical_history);
       // Force modal to use new data (in a real app, patient context/prop would update)
@@ -193,7 +194,7 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Celular</label>
-                  <input type="text" value={editProfileForm.phone} onChange={e => setEditProfileForm({...editProfileForm, phone: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                  <input type="text" value={editProfileForm.phone} onChange={e => setEditProfileForm({...editProfileForm, phone: maskPhone(e.target.value)})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Plano de Saúde</label>
@@ -355,12 +356,7 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
                       <button 
                         onClick={() => {
                           if (isEditingMedicalHistory) {
-                            const allPatients = dataManager.getPatients();
-                            const updateIndex = allPatients.findIndex(p => p.id === patient.id);
-                            if (updateIndex !== -1) {
-                              allPatients[updateIndex].medical_history = medicalHistory;
-                              dataManager.savePatients(allPatients);
-                            }
+                            dataManager.updatePatient(patient.id, { medical_history: medicalHistory });
                           }
                           setIsEditingMedicalHistory(!isEditingMedicalHistory);
                         }}

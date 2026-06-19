@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Plus, CheckCircle2, Shield, Phone, Mail, Stethoscope } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Doctor, dataManager } from '../data';
+import { maskPhone, maskCPF } from '../utils/masks';
 
 interface DoctorsProps {
   onRefreshDashboard: () => void;
@@ -170,7 +171,7 @@ export default function Doctors({ onRefreshDashboard, triggerRefresh }: DoctorsP
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">Telefone/WhatsApp</label>
                     <input
-                      type="text" value={phone} onChange={e => setPhone(e.target.value)}
+                      type="text" value={phone} onChange={e => setPhone(maskPhone(e.target.value))}
                       className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
                       placeholder="(11) 90000-0000"
                     />
@@ -186,7 +187,7 @@ export default function Doctors({ onRefreshDashboard, triggerRefresh }: DoctorsP
                   <div>
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">CPF *</label>
                     <input
-                      type="text" required value={cpf} onChange={e => setCpf(e.target.value)}
+                      type="text" required value={cpf} onChange={e => setCpf(maskCPF(e.target.value))}
                       className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
                       placeholder="000.000.000-00"
                     />

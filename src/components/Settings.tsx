@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2 } from 'lucide-react';
 import { connectGoogleCalendar, isGoogleCalendarConnected } from '../googleCalendar';
 import { dataManager } from '../data';
+import { maskCNPJ, maskDate, maskPhone, maskCEP } from '../utils/masks';
+import { getStates, getCities, fetchAddressByCep, IBGEState, IBGECity } from '../utils/ibge';
 
 export default function Settings() {
   const doc = dataManager.getDoctor();
@@ -37,8 +39,43 @@ export default function Settings() {
     };
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const [statesList, setStatesList] = useState<IBGEState[]>([]);
+  const [citiesList, setCitiesList] = useState<IBGECity[]>([]);
+
+  useEffect(() => {
+    getStates().then(setStatesList);
+  }, []);
+
+  useEffect(() => {
+    if (profileData.state) {
+      getCities(profileData.state).then(setCitiesList);
+    } else {
+      setCitiesList([]);
+    }
+  }, [profileData.state]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    let { name, value } = e.target;
+    if (name === 'cnpj') value = maskCNPJ(value);
+    if (name === 'founded') value = maskDate(value);
+    if (name === 'zip') value = maskCEP(value);
+    if (name === 'phone') value = maskPhone(value);
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCEPBlur = async () => {
+    if (profileData.zip.length === 9) {
+      const data = await fetchAddressByCep(profileData.zip);
+      if (data) {
+        setProfileData(prev => ({
+          ...prev,
+          address: data.street || prev.address,
+          neighborhood: data.neighborhood || prev.neighborhood,
+          city: data.city || prev.city,
+          state: data.state || prev.state,
+        }));
+      }
+    }
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -352,25 +389,35 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">CEP</span>
                     {isEditing ? (
-                      <input type="text" name="zip" value={profileData.zip} onChange={handleChange} placeholder="00000-000" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="zip" value={profileData.zip} onChange={handleChange} onBlur={handleCEPBlur} placeholder="00000-000" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.zip || '00000-000'}</p>
                     )}
                   </div>
                   <div>
-                    <span className="text-xs text-slate-500 font-medium block mb-1">Cidade</span>
+                    <span className="text-xs text-slate-500 font-medium block mb-1">Estado</span>
                     {isEditing ? (
-                      <input type="text" name="city" value={profileData.city} onChange={handleChange} placeholder="Cidade" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <select name="state" value={profileData.state} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600 bg-transparent pb-1">
+                        <option value="">Selecione o Estado</option>
+                        {statesList.map(s => (
+                          <option key={s.id} value={s.sigla}>{s.nome}</option>
+                        ))}
+                      </select>
                     ) : (
-                      <p className="text-[15px] font-medium text-slate-900">{profileData.city || 'Não informada'}</p>
+                      <p className="text-[15px] font-medium text-slate-900">{profileData.state || 'UF'}</p>
                     )}
                   </div>
                   <div>
-                    <span className="text-xs text-slate-500 font-medium block mb-1">Estado</span>
+                    <span className="text-xs text-slate-500 font-medium block mb-1">Cidade</span>
                     {isEditing ? (
-                      <input type="text" name="state" value={profileData.state} onChange={handleChange} placeholder="UF" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <select name="city" value={profileData.city} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600 bg-transparent pb-1" disabled={!profileData.state}>
+                        <option value="">Selecione a Cidade</option>
+                        {citiesList.map(c => (
+                          <option key={c.id} value={c.nome}>{c.nome}</option>
+                        ))}
+                      </select>
                     ) : (
-                      <p className="text-[15px] font-medium text-slate-900">{profileData.state || 'UF'}</p>
+                      <p className="text-[15px] font-medium text-slate-900">{profileData.city || 'Não informada'}</p>
                     )}
                   </div>
                 </div>

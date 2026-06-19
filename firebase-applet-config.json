@@ -1,9 +1,8 @@
 {
-  "projectId": "geometric-ethos-207pf",
-  "appId": "1:725188677237:web:d375892643e62c742e323c",
-  "apiKey": "AIzaSyCCtrn3oj3pAgWzPawYCGF629pr5Cj7w4g",
-  "authDomain": "geometric-ethos-207pf.firebaseapp.com",
-  "storageBucket": "geometric-ethos-207pf.firebasestorage.app",
-  "messagingSenderId": "725188677237",
-  "measurementId": ""
+  "projectId": "clean-mind-ia",
+  "appId": "1:39052293762:web:9b34527d7f4c9d1cc3669b",
+  "apiKey": "AIzaSyBVIyiUwklfIGOvCeqoL6ogVkvHqv-yQZU",
+  "authDomain": "clean-mind-ia.firebaseapp.com",
+  "storageBucket": "clean-mind-ia.firebasestorage.app",
+  "messagingSenderId": "39052293762"
 }

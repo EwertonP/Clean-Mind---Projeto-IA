@@ -60,16 +60,14 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
     const list = dataManager.getBilling();
     const index = list.findIndex(b => b.id === billId);
     if (index !== -1) {
-      const bill = list[index];
-      bill.status = 'paid';
+      const updates: Partial<any> = { status: 'paid' };
       
-      if (bill.auto_emit_nfe) {
-        bill.nfe_status = 'issued';
+      if (list[index].auto_emit_nfe) {
+        updates.nfe_status = 'issued';
       }
       
-      list[index] = bill;
-      dataManager.saveBilling(list);
-      setBillingList(list);
+      dataManager.updateBilling(billId, updates);
+      setBillingList(dataManager.getBilling());
       onRefreshDashboard();
 
       setToastMessage('Pagamento confirmado');

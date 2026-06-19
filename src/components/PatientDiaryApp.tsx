@@ -3,6 +3,7 @@ import { User, Search, Mail, Phone, Plus, MessageCircle, Send, CheckCircle2, Clo
 import { motion, AnimatePresence } from 'motion/react';
 import { Patient, Appointment, dataManager } from '../data';
 import PatientDetailModal from './PatientDetailModal';
+import { maskPhone } from '../utils/masks';
 
 interface PatientDiaryAppProps {
   onRefreshDashboard: () => void;
@@ -64,19 +65,14 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
       .map(t => t.trim())
       .filter(t => t.length > 0);
 
-    const newPat: Patient = {
-      id: `pat_${Date.now()}`,
-      doctor_id: newPatientDoctorId,
+    const newPat = dataManager.addPatient({
       name: newPatientName,
       email: newPatientEmail,
       phone: newPatientPhone,
       health_insurance: newPatientInsurance,
       status: 'active',
-      created_at: new Date().toISOString(),
       tags: parsedTags.length > 0 ? parsedTags : undefined
-    };
-    list.push(newPat);
-    dataManager.savePatients(list);
+    });
 
     if (newPatientQuickRecord.trim()) {
       dataManager.addMedicalRecord({
@@ -181,7 +177,10 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                     type="text"
                     required
                     value={newPatientPhone}
-                    onChange={(e) => setNewPatientPhone(e.target.value)}
+                    onChange={(e) => setNewPatientPhone(maskPhone(e.target.value))}
+                    pattern="\(\d{2}\) \d{4,5}-\d{4}"
+                    minLength={14}
+                    maxLength={15}
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
                     placeholder="(11) 98765-4321"
                   />

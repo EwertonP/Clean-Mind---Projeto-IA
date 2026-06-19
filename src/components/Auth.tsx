@@ -3,6 +3,7 @@ import { Mail, Lock, User, Phone as PhoneIcon, ArrowRight, CornerDownRight, Chec
 import { Doctor, dataManager } from '../data';
 import { auth } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { maskPhone } from '../utils/masks';
 
 interface AuthProps {
   onAuthSuccess: (doctor: Doctor) => void;
@@ -51,8 +52,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           is_configured: false,
           created_at: new Date().toISOString()
         };
-        doctors.push(currentDoc);
-        dataManager.saveDoctors(doctors);
+        dataManager.saveDoctor(currentDoc);
       }
       
       await dataManager.pullFromFirestore(currentDoc.id);
@@ -87,8 +87,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         created_at: new Date().toISOString()
       };
 
-      doctors.push(newDoc);
-      dataManager.saveDoctors(doctors);
+      dataManager.saveDoctor(newDoc);
 
       await dataManager.pullFromFirestore(newDoc.id);
 
@@ -98,8 +97,14 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       setLoading(false);
       if (e.code === 'auth/email-already-in-use') {
         setErrorMsg('Este e-mail já está em uso.');
+      } else if (e.code === 'auth/weak-password') {
+        setErrorMsg('A senha deve ter pelo menos 6 caracteres.');
+      } else if (e.code === 'auth/invalid-email') {
+        setErrorMsg('E-mail inválido.');
+      } else if (e.code === 'auth/operation-not-allowed') {
+        setErrorMsg('Login por e-mail/senha não está habilitado no Firebase.');
       } else {
-        setErrorMsg('Erro ao criar conta. Tente novamente.');
+        setErrorMsg(`Erro: ${e.message || 'Falha interna'}`);
       }
     }
   };
@@ -126,8 +131,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           is_configured: false,
           created_at: new Date().toISOString()
         };
-        doctors.push(doc);
-        dataManager.saveDoctors(doctors);
+        dataManager.saveDoctor(doc);
       }
 
       await dataManager.pullFromFirestore(doc.id);
@@ -294,13 +298,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                       </div>
                     </form>
 
-                    <div className="relative flex items-center py-2">
+                    <div className="relative flex items-center py-2 mt-4">
                       <div className="flex-grow border-t border-slate-200"></div>
                       <span className="flex-shrink-0 mx-4 text-xs text-slate-400">ou</span>
                       <div className="flex-grow border-t border-slate-200"></div>
                     </div>
 
-                    <div>
+                    <div className="mt-4">
                       <button
                         type="button"
                         onClick={handleGoogleSignIn}
@@ -354,7 +358,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             type="tel"
                             required
                             value={regPhone}
-                            onChange={(e) => setRegPhone(e.target.value)}
+                            onChange={(e) => setRegPhone(maskPhone(e.target.value))}
                             placeholder="(00) 00000-0000"
                             className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
@@ -406,7 +410,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         <div className="flex-grow border-t border-slate-200"></div>
                       </div>
 
-                      <div>
+                      <div className="mt-4">
                         <button
                           type="button"
                           onClick={handleGoogleSignIn}
