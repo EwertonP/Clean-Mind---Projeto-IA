@@ -1,43 +1,55 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe } from 'lucide-react';
+import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2 } from 'lucide-react';
 import { connectGoogleCalendar, isGoogleCalendarConnected } from '../googleCalendar';
 import { dataManager } from '../data';
 
 export default function Settings() {
+  const doc = dataManager.getDoctor();
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'integrations' | 'whatsapp'>('profile');
   const [googleConnected, setGoogleConnected] = useState(isGoogleCalendarConnected());
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(doc?.is_configured === false);
 
   // Clinic profile state
   const [profileData, setProfileData] = useState(() => {
-    const defaultDoc = dataManager.getDoctor();
     return {
-      name: defaultDoc?.clinic_name || '',
-      specialty: defaultDoc?.specialty || '',
+      name: doc?.clinic_name || '',
+      logo: doc?.clinic_logo || '',
+      specialty: doc?.specialty || '',
       patients: '47',
       professionals: '3',
-      numberOfRooms: defaultDoc?.clinic_rooms?.length.toString() || '',
-      description: defaultDoc?.clinic_description || '',
-      cnpj: defaultDoc?.clinic_cnpj || '',
-      founded: defaultDoc?.clinic_founded || '',
-      address: defaultDoc?.clinic_street || '',
-      neighborhood: defaultDoc?.clinic_neighborhood || '',
-      zip: defaultDoc?.clinic_zip || '',
-      city: defaultDoc?.clinic_city || '',
-      state: defaultDoc?.clinic_state || '',
-      phone: defaultDoc?.phone || '',
-      email: defaultDoc?.email || '',
-      website: defaultDoc?.clinic_website || '',
-      businessHoursStart: defaultDoc?.business_hours?.start || '',
-      businessHoursEnd: defaultDoc?.business_hours?.end || '',
-      businessDays: defaultDoc?.business_hours?.days || '',
-      custom_signature: defaultDoc?.custom_signature || ''
+      numberOfRooms: doc?.clinic_rooms?.length.toString() || '',
+      description: doc?.clinic_description || '',
+      cnpj: doc?.clinic_cnpj || '',
+      founded: doc?.clinic_founded || '',
+      address: doc?.clinic_street || '',
+      neighborhood: doc?.clinic_neighborhood || '',
+      zip: doc?.clinic_zip || '',
+      city: doc?.clinic_city || '',
+      state: doc?.clinic_state || '',
+      phone: doc?.phone || '',
+      email: doc?.email || '',
+      website: doc?.clinic_website || '',
+      businessHoursStart: doc?.business_hours?.start || '',
+      businessHoursEnd: doc?.business_hours?.end || '',
+      businessDays: doc?.business_hours?.days || '',
+      custom_signature: doc?.custom_signature || ''
     };
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData(prev => ({ ...prev, logo: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = () => {
@@ -51,6 +63,7 @@ export default function Settings() {
       if (doc) {
         const roomsNum = parseInt(profileData.numberOfRooms, 10) || 1;
         doc.clinic_name = profileData.name;
+        doc.clinic_logo = profileData.logo;
         doc.specialty = profileData.specialty;
         doc.clinic_description = profileData.description;
         doc.clinic_cnpj = profileData.cnpj;
@@ -105,6 +118,16 @@ export default function Settings() {
         </div>
       </div>
 
+      {doc?.is_configured === false && (
+        <div className="bg-[#192F28] border border-[#192F28] rounded-2xl p-6 text-white shadow-sm">
+          <h2 className="text-xl font-bold mb-2">Bem-vindo(a) ao Cleanmind!</h2>
+          <p className="text-sm text-white/80">
+            Para liberar o acesso completo a todas as funcionalidades do sistema (Dashboard, Agenda, Financeiro e Prontuários), por favor preencha as informações básicas da sua clínica abaixo. 
+            Não se preocupe, você poderá alterar esses dados a qualquer momento.
+          </p>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex items-center space-x-4 border-b border-slate-200">
         <button
@@ -151,8 +174,12 @@ export default function Settings() {
           <div className="space-y-6">
              {/* Box 1: Cabeçalho da Clínica */}
              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-start gap-4">
-                <div className="w-20 h-20 bg-[#C1E2A4] rounded-2xl flex items-center justify-center shrink-0">
-                  <Building2 className="w-10 h-10 text-slate-800" />
+                <div className="w-20 h-20 bg-[#C1E2A4] rounded-2xl flex items-center justify-center shrink-0 overflow-hidden">
+                  {profileData.logo ? (
+                    <img src={profileData.logo} alt="Logo da Clínica" className="w-full h-full object-cover" />
+                  ) : (
+                    <Building2 className="w-10 h-10 text-slate-800" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
@@ -196,6 +223,34 @@ export default function Settings() {
                     </p>
                   )}
                 </div>
+             </div>
+
+             {/* Box 1.5: Logo da Clínica */}
+             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-bold text-lg text-slate-800 mb-2">Logo da Clínica</h3>
+                <p className="text-sm text-slate-500 mb-6">Esta logo será exibida no cabeçalho dos prontuários e documentos impressos.</p>
+                
+                {isEditing ? (
+                  <label className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-[#192F28] transition-colors cursor-pointer group">
+                    <div className="w-12 h-12 bg-[#192F28]/5 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="w-6 h-6 text-[#192F28]" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-900">Clique para enviar uma logo</span>
+                    <span className="text-xs text-slate-500 mt-1">PNG, JPG ou SVG (Máx. 2MB)</span>
+                    <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                  </label>
+                ) : (
+                  profileData.logo ? (
+                    <div className="relative inline-block border border-slate-200 rounded-xl p-4 bg-slate-50">
+                      <img src={profileData.logo} alt="Logo da clínica" className="max-h-24 w-auto object-contain" />
+                    </div>
+                  ) : (
+                    <div className="border border-slate-200 rounded-xl p-8 flex flex-col items-center text-slate-400 bg-slate-50">
+                      <Building2 className="w-8 h-8 mb-2 opacity-50" />
+                      <span className="text-sm font-medium">Nenhuma logo configurada</span>
+                    </div>
+                  )
+                )}
              </div>
 
              {/* Box 2: Informações Básicas */}

@@ -3,7 +3,7 @@ import {
   LayoutDashboard, 
   Calendar, 
   FileText, 
-  DollarSign, 
+  Wallet, 
   MessageSquare, 
   Database,
   LogOut,
@@ -52,6 +52,9 @@ export default function App() {
       const doc = doctors.find(d => d.id === sessionId);
       if (doc) {
         setDoctor(doc);
+        dataManager.pullFromFirestore(doc.id).then(() => {
+          setTriggerCount(prev => prev + 1);
+        });
         if (doc.is_configured === false) {
           setActiveTab('configuracoes');
         }
@@ -173,8 +176,8 @@ export default function App() {
                   onClick={() => handleNavigateWithParams('financeiro')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'financeiro' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <DollarSign className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  <span>Cobranças</span>
+                  <Wallet className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <span>Financeiro</span>
                 </button>
 
                 <button

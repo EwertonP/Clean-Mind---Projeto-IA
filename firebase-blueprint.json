@@ -68,12 +68,13 @@
       "type": "object",
       "properties": {
         "patient_id": { "type": "string" },
+        "doctor_id": { "type": "string" },
         "content": { "type": "string" },
         "sentiment_score": { "type": "number" },
         "crisis_flag": { "type": "boolean" },
         "created_at": { "type": "string" }
       },
-      "required": ["patient_id", "content", "sentiment_score", "crisis_flag", "created_at"]
+      "required": ["patient_id", "doctor_id", "content", "sentiment_score", "crisis_flag", "created_at"]
     },
     "MedicalRecord": {
       "title": "MedicalRecord",

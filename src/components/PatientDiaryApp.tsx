@@ -30,6 +30,7 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
   const [newPatientPhone, setNewPatientPhone] = useState('');
   const [newPatientDiag, setNewPatientDiag] = useState('');
   const [newPatientQuickRecord, setNewPatientQuickRecord] = useState('');
+  const [newPatientTags, setNewPatientTags] = useState('');
   const [newPatientInsurance, setNewPatientInsurance] = useState('Particular');
   const [newPatientDoctorId, setNewPatientDoctorId] = useState(doctors[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,7 +40,15 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
 
   useEffect(() => {
     const list = dataManager.getPatients();
-    setPatients(list);
+    // Add mock tags to initial patients for presentation purposes if they don't have any
+    const listWithMockTags = list.map(p => {
+      if (p.tags && p.tags.length > 0) return p;
+      if (p.name === 'Bruno Alencar') return { ...p, tags: ['Risco'] };
+      if (p.name === 'Elisa Souza') return { ...p, tags: ['Acompanhamento', 'Financeiro Pendente'] };
+      if (p.name === 'Daniel Rocha') return { ...p, tags: ['Alta programada'] };
+      return p;
+    });
+    setPatients(listWithMockTags);
     setAppointments(dataManager.getAppointments());
   }, [triggerRefresh]);
 
@@ -49,6 +58,12 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
     
     // Add logic to save the new fields
     const list = dataManager.getPatients();
+    
+    const parsedTags = newPatientTags
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
     const newPat: Patient = {
       id: `pat_${Date.now()}`,
       doctor_id: newPatientDoctorId,
@@ -57,7 +72,8 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
       phone: newPatientPhone,
       health_insurance: newPatientInsurance,
       status: 'active',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      tags: parsedTags.length > 0 ? parsedTags : undefined
     };
     list.push(newPat);
     dataManager.savePatients(list);
@@ -77,6 +93,7 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
     setNewPatientPhone('');
     setNewPatientDiag('');
     setNewPatientQuickRecord('');
+    setNewPatientTags('');
     setNewPatientInsurance('Particular');
     setShowPatientForm(false);
     onRefreshDashboard();
@@ -211,6 +228,17 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                   onChange={(e) => setNewPatientDiag(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
                   placeholder="Ex: Transtorno de Ansiedade Generalizada"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-1.5">Tags (separadas por vírgula)</label>
+                <input
+                  type="text"
+                  value={newPatientTags}
+                  onChange={(e) => setNewPatientTags(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                  placeholder="Ex: Risco, Acompanhamento, Financeiro Pendente"
                 />
               </div>
 
@@ -368,7 +396,7 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                             : '?'}
                       </div>
                       <div className="flex flex-col justify-center">
-                        <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight flex items-center space-x-2">
+                       <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight flex items-center space-x-2">
                           <span>{patient.name}</span>
                           {hasNoRecentAppt && (
                             <div title="Sem agendamento há mais de 30 dias" className="flex items-center justify-center text-amber-500 bg-amber-50/80 p-1 rounded-md border border-amber-100/50">
@@ -376,7 +404,26 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                             </div>
                           )}
                         </div>
-                        <div className="text-xs text-slate-500 mt-0.5">{fakeData.since}</div>
+                        {patient.tags && patient.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {patient.tags.map((tag, idx) => {
+                              const norm = tag.toLowerCase().trim();
+                              let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
+                              if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
+                              else if (norm.includes('acompanhamento')) colorClass = 'bg-sky-100 text-sky-700 border-sky-200';
+                              else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                              else if (norm.includes('alta')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                              else colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                              
+                              return (
+                                <span key={idx} className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${colorClass} tracking-wide whitespace-nowrap leading-none`}>
+                                  {tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="text-xs text-slate-500 mt-1">{fakeData.since}</div>
                       </div>
                     </div>
                   </td>
@@ -405,9 +452,9 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                   <td className="py-4 px-8 text-center text-sm font-bold text-slate-900">
                     <div className="flex items-center justify-center space-x-1.5">
                       <span>{fakeData.sessions}</span>
-                      {fakeData.trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-500" title="Alta frequência recente" />}
-                      {fakeData.trend === 'down' && <TrendingDown className="w-4 h-4 text-rose-500" title="Baixa frequência recente" />}
-                      {fakeData.trend === 'neutral' && <Minus className="w-4 h-4 text-slate-300" title="Frequência estável" />}
+                      {fakeData.trend === 'up' && <span title="Alta frequência recente"><TrendingUp className="w-4 h-4 text-emerald-500" /></span>}
+                      {fakeData.trend === 'down' && <span title="Baixa frequência recente"><TrendingDown className="w-4 h-4 text-rose-500" /></span>}
+                      {fakeData.trend === 'neutral' && <span title="Frequência estável"><Minus className="w-4 h-4 text-slate-300" /></span>}
                     </div>
                   </td>
                   <td className="py-4 px-8 text-sm font-medium text-slate-700 whitespace-nowrap">

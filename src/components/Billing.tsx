@@ -109,7 +109,7 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
       {/* Title */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 border-b border-slate-200 pb-5 mb-6">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Cobranças</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Financeiro</h1>
           <p className="text-xs text-slate-500 mt-1 max-w-lg">
             Faturamento automatizado, conciliação Pix síncrona e emissão automatizada de notas fiscais de serviço (NFS-e).
           </p>

@@ -22,7 +22,8 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
     email: patient.email || '',
     phone: patient.phone,
     health_insurance: patient.health_insurance || '',
-    medical_history: patient.medical_history || ''
+    medical_history: patient.medical_history || '',
+    tags: patient.tags ? patient.tags.join(', ') : ''
   });
 
   const getEmail = () => {
@@ -34,10 +35,19 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
     const allPatients = dataManager.getPatients();
     const updateIndex = allPatients.findIndex(p => p.id === patient.id);
     if (updateIndex !== -1) {
+      const parsedTags = editProfileForm.tags
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+
       allPatients[updateIndex] = {
         ...patient,
-        ...editProfileForm
+        ...editProfileForm,
+        tags: parsedTags.length > 0 ? parsedTags : undefined
       };
+      // Removing tags string so it is not saved on the object permanently as a string instead of string[]
+      delete (allPatients[updateIndex] as any).tagsString;
+      
       dataManager.savePatients(allPatients);
       // Update local medical history state to reflect changes if edited here
       setMedicalHistory(editProfileForm.medical_history);
@@ -47,6 +57,7 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
       patient.phone = editProfileForm.phone;
       patient.health_insurance = editProfileForm.health_insurance;
       patient.medical_history = editProfileForm.medical_history;
+      patient.tags = parsedTags.length > 0 ? parsedTags : undefined;
     }
     setIsEditingProfile(false);
   };
@@ -188,6 +199,10 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Plano de Saúde</label>
                   <input type="text" value={editProfileForm.health_insurance} onChange={e => setEditProfileForm({...editProfileForm, health_insurance: e.target.value})} placeholder="Ex: Unimed, Particular" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Tags (separadas por vírgula)</label>
+                  <input type="text" value={editProfileForm.tags} onChange={e => setEditProfileForm({...editProfileForm, tags: e.target.value})} placeholder="Ex: Risco, Avaliação" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Histórico Médico</label>
                   <textarea value={editProfileForm.medical_history} onChange={e => setEditProfileForm({...editProfileForm, medical_history: e.target.value})} rows={3} placeholder="Alergias, medicações, condições..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]"></textarea>
@@ -217,6 +232,25 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
                     {patient.health_insurance && <span className="flex items-center gap-1.5"><Shield className="h-4 w-4 text-slate-400" /> {patient.health_insurance}</span>}
                     <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-slate-400" /> {fakeData.since}</span>
                   </div>
+                  {patient.tags && patient.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {patient.tags.map((tag, idx) => {
+                        const norm = tag.toLowerCase().trim();
+                        let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
+                        if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
+                        else if (norm.includes('acompanhamento')) colorClass = 'bg-sky-100 text-sky-700 border-sky-200';
+                        else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                        else if (norm.includes('alta')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                        else colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                        
+                        return (
+                          <span key={idx} className={`text-xs uppercase font-bold px-2 py-0.5 rounded border ${colorClass} tracking-wide whitespace-nowrap leading-none`}>
+                            {tag}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -276,155 +310,190 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
         <div className="p-8 overflow-y-auto flex-1 bg-slate-50/50">
           <div key={activeTab} className="animate-fade-in">
             {activeTab === 'clinicos' && (
-              <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-emerald-500" /> Diagnóstico e Tratamento
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="block text-slate-500 mb-1">Diagnóstico Inicial</span>
-                      <span className="font-semibold text-slate-900 px-2 py-1 bg-blue-50 text-blue-700 rounded-md inline-block">{fakeData.diag}</span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-emerald-500" /> Diagnóstico e Tratamento
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="block text-slate-500 mb-1">Diagnóstico Inicial</span>
+                          <span className="font-semibold text-slate-900 px-2 py-1 bg-blue-50 text-blue-700 rounded-md inline-block">{fakeData.diag}</span>
+                        </div>
+                        <div>
+                          <span className="block text-slate-500 mb-1">Total de Sessões</span>
+                          <span className="font-semibold text-slate-900">{fakeData.sessions} sessões realizadas</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="block text-slate-500 mb-1">Total de Sessões</span>
-                      <span className="font-semibold text-slate-900">{fakeData.sessions} sessões realizadas</span>
+
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                        <User className="h-5 w-5 text-blue-500" /> Informações Pessoais
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="block text-slate-500 mb-1">Status de Cadastro</span>
+                          <span className={`font-semibold ${fakeData.status === 'Inativo' ? 'text-slate-600' : 'text-emerald-600'}`}>{fakeData.status}</span>
+                        </div>
+                        <div>
+                          <span className="block text-slate-500 mb-1">Paciente Desde</span>
+                          <span className="font-semibold text-slate-900">{fakeData.since.replace('Desde ', '')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Histórico Médico Section */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
+                    <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-b border-slate-200">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                        <BookOpen className="h-4 w-4 text-emerald-600" /> Histórico Médico e Antecedentes
+                      </h3>
+                      <button 
+                        onClick={() => {
+                          if (isEditingMedicalHistory) {
+                            const allPatients = dataManager.getPatients();
+                            const updateIndex = allPatients.findIndex(p => p.id === patient.id);
+                            if (updateIndex !== -1) {
+                              allPatients[updateIndex].medical_history = medicalHistory;
+                              dataManager.savePatients(allPatients);
+                            }
+                          }
+                          setIsEditingMedicalHistory(!isEditingMedicalHistory);
+                        }}
+                        className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer"
+                      >
+                        {isEditingMedicalHistory ? <Check className="h-4 w-4 text-emerald-600" /> : <Edit3 className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <div className="p-6">
+                      {isEditingMedicalHistory ? (
+                        <textarea 
+                          value={medicalHistory}
+                          onChange={(e) => setMedicalHistory(e.target.value)}
+                          placeholder="Adicione alergias, doenças crônicas, cirurgias ou histórico familiar..."
+                          className="w-full bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10 resize-y min-h-[120px] text-slate-900 placeholder:text-slate-400 p-4 text-sm leading-relaxed outline-none transition-all"
+                          autoFocus
+                        />
+                      ) : (
+                        <div className="min-h-[120px] w-full text-sm leading-relaxed">
+                          {medicalHistory ? (
+                            <div className="markdown-body text-slate-900 prose prose-sm prose-emerald max-w-none">
+                              <Markdown
+                                components={{
+                                  p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 last:mb-0" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 last:mb-0" {...props} />,
+                                  h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2 text-slate-800" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2 text-slate-800" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-1 text-slate-800" {...props} />,
+                                  a: ({node, ...props}) => <a className="underline text-emerald-600 hover:text-emerald-700" {...props} />,
+                                  strong: ({node, ...props}) => <strong className="font-bold text-slate-800" {...props} />
+                                }}
+                              >
+                                {medicalHistory}
+                              </Markdown>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">Nenhum antecedente ou dado médico registrado. Clique no ícone de lápis para adicionar alergias, cirurgias prévias ou condições crônicas.</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Notes Section */}
+                  <div className="bg-[#FEF9C3] rounded-2xl border border-[#FDE047] shadow-sm overflow-hidden relative">
+                    <div className="bg-[#FEF08A] px-6 py-3 flex items-center justify-between border-b border-[#FDE047]">
+                      <h3 className="font-bold text-yellow-900 flex items-center gap-2 text-sm">
+                        <StickyNote className="h-4 w-4" /> Quick Notes (Privado)
+                      </h3>
+                      <button 
+                        onClick={() => {
+                          if (isEditingNote) {
+                            localStorage.setItem(`quick_note_${patient.id}`, quickNote);
+                          }
+                          setIsEditingNote(!isEditingNote);
+                        }}
+                        className="text-yellow-700 hover:text-yellow-900 transition-colors p-1 cursor-pointer"
+                      >
+                        {isEditingNote ? <Check className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <div className="p-6">
+                      {isEditingNote ? (
+                        <textarea 
+                          value={quickNote}
+                          onChange={(e) => setQuickNote(e.target.value)}
+                          placeholder="Adicione anotações rápidas e privadas aqui..."
+                          className="w-full bg-transparent border-0 focus:ring-0 resize-none h-32 text-yellow-900 placeholder:text-yellow-700/50 p-0 text-sm leading-relaxed outline-none"
+                          autoFocus
+                        />
+                      ) : (
+                        <div className="h-32 overflow-y-auto w-full text-sm leading-relaxed">
+                          {quickNote ? (
+                            <div className="markdown-body text-yellow-900 prose prose-sm prose-yellow max-w-none">
+                              <Markdown
+                                components={{
+                                  p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 last:mb-0" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 last:mb-0" {...props} />,
+                                  h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2 text-yellow-950" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2 text-yellow-950" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-1 text-yellow-950" {...props} />,
+                                  a: ({node, ...props}) => <a className="underline text-yellow-700 hover:text-yellow-900" {...props} />,
+                                  strong: ({node, ...props}) => <strong className="font-bold text-yellow-950" {...props} />
+                                }}
+                              >
+                                {quickNote}
+                              </Markdown>
+                            </div>
+                          ) : (
+                            <span className="text-yellow-700/50 italic whitespace-pre-wrap">Nenhuma anotação rápida. Clique no ícone para editar.</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                    <User className="h-5 w-5 text-blue-500" /> Informações Pessoais
-                  </h3>
-                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="block text-slate-500 mb-1">Status de Cadastro</span>
-                      <span className={`font-semibold ${fakeData.status === 'Inativo' ? 'text-slate-600' : 'text-emerald-600'}`}>{fakeData.status}</span>
+                {/* Col 3: Próximos Agendamentos Widget */}
+                <div className="space-y-6">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-4">
+                      <Calendar className="h-4 w-4 text-indigo-500" /> Próximos Agendamentos
+                    </h3>
+                    <div className="space-y-3">
+                      {appointments
+                        .filter(a => ['pending', 'confirmed'].includes(a.status))
+                        .sort((a, b) => new Date(`${a.date.split('/').reverse().join('-')}T${a.start_time}`).getTime() - new Date(`${b.date.split('/').reverse().join('-')}T${b.start_time}`).getTime())
+                        .slice(0, 3)
+                        .map((appt, idx) => (
+                        <div key={appt.id || idx} className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-indigo-900">{appt.date}</span>
+                            <span className="text-[10px] uppercase tracking-wider font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{appt.start_time}</span>
+                          </div>
+                          <span className="text-xs text-indigo-800 capitalize font-medium">{appt.type}</span>
+                        </div>
+                      ))}
+                      {appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length === 0 && (
+                        <div className="text-center py-4 px-2">
+                          <p className="text-xs text-slate-500 italic">Nenhum agendamento futuro encontrado para este paciente.</p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <span className="block text-slate-500 mb-1">Paciente Desde</span>
-                      <span className="font-semibold text-slate-900">{fakeData.since.replace('Desde ', '')}</span>
-                    </div>
+                    {appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length > 0 && (
+                      <button onClick={() => setActiveTab('consultas')} className="mt-4 w-full py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer text-center">
+                        Ver histórico completo
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-
-              {/* Histórico Médico Section */}
-              <div className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
-                <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-b border-slate-200">
-                  <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                    <BookOpen className="h-4 w-4 text-emerald-600" /> Histórico Médico e Antecedentes
-                  </h3>
-                  <button 
-                    onClick={() => {
-                      if (isEditingMedicalHistory) {
-                        const allPatients = dataManager.getPatients();
-                        const updateIndex = allPatients.findIndex(p => p.id === patient.id);
-                        if (updateIndex !== -1) {
-                          allPatients[updateIndex].medical_history = medicalHistory;
-                          dataManager.savePatients(allPatients);
-                        }
-                      }
-                      setIsEditingMedicalHistory(!isEditingMedicalHistory);
-                    }}
-                    className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer"
-                  >
-                    {isEditingMedicalHistory ? <Check className="h-4 w-4 text-emerald-600" /> : <Edit3 className="h-4 w-4" />}
-                  </button>
-                </div>
-                <div className="p-6">
-                  {isEditingMedicalHistory ? (
-                    <textarea 
-                      value={medicalHistory}
-                      onChange={(e) => setMedicalHistory(e.target.value)}
-                      placeholder="Adicione alergias, doenças crônicas, cirurgias ou histórico familiar..."
-                      className="w-full bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-500/10 resize-y min-h-[120px] text-slate-900 placeholder:text-slate-400 p-4 text-sm leading-relaxed outline-none transition-all"
-                      autoFocus
-                    />
-                  ) : (
-                    <div className="min-h-[120px] w-full text-sm leading-relaxed">
-                      {medicalHistory ? (
-                        <div className="markdown-body text-slate-900 prose prose-sm prose-emerald max-w-none">
-                          <Markdown
-                            components={{
-                              p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                              ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 last:mb-0" {...props} />,
-                              ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 last:mb-0" {...props} />,
-                              h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2 text-slate-800" {...props} />,
-                              h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2 text-slate-800" {...props} />,
-                              h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-1 text-slate-800" {...props} />,
-                              a: ({node, ...props}) => <a className="underline text-emerald-600 hover:text-emerald-700" {...props} />,
-                              strong: ({node, ...props}) => <strong className="font-bold text-slate-800" {...props} />
-                            }}
-                          >
-                            {medicalHistory}
-                          </Markdown>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic">Nenhum antecedente ou dado médico registrado. Clique no ícone de lápis para adicionar alergias, cirurgias prévias ou condições crônicas.</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Notes Section */}
-              <div className="mt-6 bg-[#FEF9C3] rounded-2xl border border-[#FDE047] shadow-sm overflow-hidden relative">
-                <div className="bg-[#FEF08A] px-6 py-3 flex items-center justify-between border-b border-[#FDE047]">
-                  <h3 className="font-bold text-yellow-900 flex items-center gap-2 text-sm">
-                    <StickyNote className="h-4 w-4" /> Quick Notes (Privado)
-                  </h3>
-                  <button 
-                    onClick={() => {
-                      if (isEditingNote) {
-                        localStorage.setItem(`quick_note_${patient.id}`, quickNote);
-                      }
-                      setIsEditingNote(!isEditingNote);
-                    }}
-                    className="text-yellow-700 hover:text-yellow-900 transition-colors p-1 cursor-pointer"
-                  >
-                    {isEditingNote ? <Check className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
-                  </button>
-                </div>
-                <div className="p-6">
-                  {isEditingNote ? (
-                    <textarea 
-                      value={quickNote}
-                      onChange={(e) => setQuickNote(e.target.value)}
-                      placeholder="Adicione anotações rápidas e privadas aqui..."
-                      className="w-full bg-transparent border-0 focus:ring-0 resize-none h-32 text-yellow-900 placeholder:text-yellow-700/50 p-0 text-sm leading-relaxed outline-none"
-                      autoFocus
-                    />
-                  ) : (
-                    <div className="h-32 overflow-y-auto w-full text-sm leading-relaxed">
-                      {quickNote ? (
-                        <div className="markdown-body text-yellow-900 prose prose-sm prose-yellow max-w-none">
-                          <Markdown
-                            components={{
-                              p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                              ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 last:mb-0" {...props} />,
-                              ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 last:mb-0" {...props} />,
-                              h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2 text-yellow-950" {...props} />,
-                              h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2 text-yellow-950" {...props} />,
-                              h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-1 text-yellow-950" {...props} />,
-                              a: ({node, ...props}) => <a className="underline text-yellow-700 hover:text-yellow-900" {...props} />,
-                              strong: ({node, ...props}) => <strong className="font-bold text-yellow-950" {...props} />
-                            }}
-                          >
-                            {quickNote}
-                          </Markdown>
-                        </div>
-                      ) : (
-                        <span className="text-yellow-700/50 italic whitespace-pre-wrap">Nenhuma anotação rápida. Clique no ícone para editar.</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-            </div>
           )}
 
           {activeTab === 'consultas' && (

@@ -224,8 +224,13 @@ export default function Agenda({ onRefreshDashboard, triggerRefresh }: AgendaPro
   };
 
   const colors = ['bg-[#C1E2A4]', 'bg-blue-200', 'bg-orange-200', 'bg-purple-200', 'bg-pink-200'];
-  const getAppointmentForSlot = (isoDate: string, time: string) => {
-    return appointments.find(app => app.date === isoDate && app.start_time === time);
+  const getAppointmentsForSlot = (isoDate: string, time: string) => {
+    const slotHour = parseInt(time.split(':')[0], 10);
+    return appointments.filter(app => {
+      if (app.date !== isoDate) return false;
+      const appHour = parseInt(app.start_time.split(':')[0], 10);
+      return appHour === slotHour;
+    });
   };
 
   const getPatientColor = (patientId: string) => {
@@ -513,6 +518,17 @@ export default function Agenda({ onRefreshDashboard, triggerRefresh }: AgendaPro
           </div>
 
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                 setAppointments(dataManager.getAppointments());
+                 setToastMessage('Calendário atualizado');
+                 setTimeout(() => setToastMessage(''), 3000);
+              }}
+              className="px-3 py-1.5 flex items-center space-x-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
             <button onClick={prevWeek} className="w-8 h-8 flex items-center justify-center hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition-colors shadow-sm bg-white text-slate-600">
                &lt;
             </button>
@@ -549,11 +565,12 @@ export default function Agenda({ onRefreshDashboard, triggerRefresh }: AgendaPro
                       {time}
                     </div>
                     {weekDays.map((day, colIdx) => {
-                      const event = getAppointmentForSlot(day.date, time);
+                      const events = getAppointmentsForSlot(day.date, time);
                       return (
-                        <div key={`${day.label}-${time}`} className="flex-1 border-r border-slate-100 last:border-0 relative p-1.5 align-top flex hover:bg-slate-50 transition-colors">
-                           {event && (
+                        <div key={`${day.label}-${time}`} className="flex-1 border-r border-slate-100 last:border-0 relative p-1.5 align-top flex flex-col gap-1 hover:bg-slate-50 transition-colors">
+                           {events.map((event) => (
                              <div 
+                               key={event.id}
                                onClick={() => {
                                  setEditingAppointmentId(event.id);
                                  setSelectedPatientId(event.patient_id);
@@ -564,26 +581,23 @@ export default function Agenda({ onRefreshDashboard, triggerRefresh }: AgendaPro
                                  if (event.room) setRoom(event.room);
                                  setShowForm(true);
                                }}
-                               className={`${getPatientColor(event.patient_id)} w-full h-auto rounded-lg p-2 sm:p-2.5 flex flex-col text-slate-900 shadow-sm mx-auto overflow-hidden cursor-pointer hover:ring-2 hover:ring-slate-900/20 transition-all`}
+                               className={`${getPatientColor(event.patient_id)} w-full h-auto rounded-lg p-2 flex flex-col text-slate-900 shadow-sm mx-auto overflow-hidden cursor-pointer hover:ring-2 hover:ring-slate-900/20 transition-all`}
                              >
                                 <div className="flex items-center space-x-1 mb-1 pb-1 border-b border-slate-900/10">
                                    <Clock className="w-3 h-3 opacity-60 shrink-0" />
-                                   <span className="block text-[10px] sm:text-xs font-semibold truncate">{event.start_time} - {event.duration}m</span>
+                                   <span className="block text-[10px] font-semibold truncate">{event.start_time} - {event.duration}m</span>
                                 </div>
-                                <div className="flex items-center space-x-2 mt-1">
-                                   <div className="w-5 h-5 rounded-full bg-slate-900/10 flex items-center justify-center shrink-0">
-                                      <span className="text-[10px] font-bold text-slate-900">{getPatientName(event.patient_id).charAt(0)}</span>
-                                   </div>
-                                   <span className="block text-xs sm:text-sm font-bold leading-tight line-clamp-1">{getPatientName(event.patient_id)}</span>
+                                <div className="flex items-center space-x-1 mt-0.5">
+                                   <span className="block text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-1">{getPatientName(event.patient_id)}</span>
                                 </div>
                                 {event.room && (
-                                   <div className="flex items-center space-x-1 mt-1.5 opacity-80 mt-auto">
-                                      <MapPin className="w-3 h-3 shrink-0" />
-                                      <span className="text-[10px] font-medium truncate">{event.room}</span>
+                                   <div className="flex items-center space-x-1 mt-1 opacity-80 mt-auto">
+                                      <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="text-[9px] font-medium truncate">{event.room}</span>
                                    </div>
                                 )}
                              </div>
-                           )}
+                           ))}
                         </div>
                       );
                     })}

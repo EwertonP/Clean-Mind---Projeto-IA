@@ -3,7 +3,11 @@
  * Synchronizes patients, appointments, billing, diary entries, and medical records.
  */
 
+import { db, auth } from './firebase';
+import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where } from 'firebase/firestore';
+
 export interface Doctor {
+
   id: string;
   email: string;
   name: string;
@@ -24,6 +28,7 @@ export interface Doctor {
   clinic_city?: string;
   clinic_state?: string;
   clinic_website?: string;
+  clinic_logo?: string;
   clinic_description?: string;
   custom_signature?: string;
   clinic_rooms?: string[];
@@ -45,6 +50,7 @@ export interface Patient {
   medical_history?: string;
   status: 'active' | 'inactive' | 'archived';
   created_at: string;
+  tags?: string[];
 }
 
 export interface Appointment {
@@ -74,6 +80,7 @@ export interface Billing {
 export interface DiaryEntry {
   id: string;
   patient_id: string;
+  doctor_id: string;
   content: string;
   sentiment_score: number; // -1.00 to 1.00
   crisis_flag: boolean;
@@ -93,234 +100,22 @@ export interface MedicalRecord {
 }
 
 // Initial Doctors List
-const INITIAL_DOCTORS: Doctor[] = [
-  {
-    id: 'doc_983',
-    email: 'ewertonphillipe18@gmail.com',
-    name: 'Dr. Ewerton Phillipe',
-    crp_crm: 'CRM-SP 123456',
-    rqe: 'RQE 1234',
-    cpf: '123.456.789-00',
-    phone: '+55 11 98888-7777',
-    specialty: 'Psiquiatra e especialista em TCC',
-    plan_type: 'pro',
-    clinic_name: 'Clínica One',
-    clinic_rooms: ['Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5'],
-    business_hours: {
-      start: '08:00',
-      end: '18:00',
-      days: 'Segunda a Sábado'
-    }
-  }
-];
+const INITIAL_DOCTORS: Doctor[] = [];
 
 // Initial Patients
-const INITIAL_PATIENTS: Patient[] = [
-  {
-    id: 'pat_1',
-    doctor_id: 'doc_983',
-    name: 'Bruno Alencar',
-    email: 'bruno.alencar@email.com',
-    phone: '+55 (11) 98822-1111',
-    health_insurance: 'Particular',
-    status: 'active',
-    created_at: '2026-01-15T10:00:00Z'
-  },
-  {
-    id: 'pat_2',
-    doctor_id: 'doc_983',
-    name: 'Elisa Souza',
-    email: 'elisa.souza@email.com',
-    phone: '+55 (21) 99344-2222',
-    health_insurance: 'Unimed',
-    status: 'active',
-    created_at: '2026-02-10T14:30:00Z'
-  },
-  {
-    id: 'pat_3',
-    doctor_id: 'doc_983',
-    name: 'Ana Costa',
-    email: 'ana.costa@email.com',
-    phone: '+55 (11) 97711-3333',
-    health_insurance: 'Bradesco Saúde',
-    status: 'active',
-    created_at: '2026-03-01T09:15:00Z'
-  },
-  {
-    id: 'pat_4',
-    doctor_id: 'doc_983',
-    name: 'Daniel Rocha',
-    email: 'daniel.rocha@email.com',
-    phone: '+55 (31) 98455-4444',
-    health_insurance: 'Amil',
-    status: 'active',
-    created_at: '2026-04-12T11:00:00Z'
-  },
-  {
-    id: 'pat_5',
-    doctor_id: 'doc_983',
-    name: 'Clara Mendes',
-    email: 'clara.mendes@email.com',
-    phone: '+55 (11) 99111-5555',
-    health_insurance: 'Particular',
-    status: 'active',
-    created_at: '2026-05-20T16:00:00Z'
-  }
-];
+const INITIAL_PATIENTS: Patient[] = [];
 
 // Initial Appointments
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'app_1',
-    patient_id: 'pat_3', // Ana Costa
-    doctor_id: 'doc_983',
-    date: '2026-06-09', // Today
-    start_time: '09:00',
-    duration: 50,
-    type: 'online',
-    status: 'completed'
-  },
-  {
-    id: 'app_2',
-    patient_id: 'pat_4', // Daniel Rocha
-    doctor_id: 'doc_983',
-    date: '2026-06-09', // Today
-    start_time: '14:00',
-    duration: 50,
-    type: 'presencial',
-    room: 'Sala 1',
-    status: 'confirmed'
-  },
-  {
-    id: 'app_3',
-    patient_id: 'pat_2', // Elisa Souza
-    doctor_id: 'doc_983',
-    date: '2026-06-09', // Today
-    start_time: '16:30',
-    duration: 50,
-    type: 'online',
-    status: 'pending'
-  },
-  {
-    id: 'app_4',
-    patient_id: 'pat_1', // Bruno Alencar
-    doctor_id: 'doc_983',
-    date: '2026-06-10', // Tomorrow
-    start_time: '10:00',
-    duration: 50,
-    type: 'online',
-    status: 'confirmed'
-  },
-  {
-    id: 'app_5',
-    patient_id: 'pat_5', // Clara Mendes
-    doctor_id: 'doc_983',
-    date: '2026-06-12',
-    start_time: '11:00',
-    duration: 50,
-    type: 'presencial',
-    room: 'Sala 2',
-    status: 'confirmed'
-  }
-];
+const INITIAL_APPOINTMENTS: Appointment[] = [];
 
 // Initial Billing
-const INITIAL_BILLING: Billing[] = [
-  {
-    id: 'bill_1',
-    patient_id: 'pat_1', // Bruno Alencar
-    doctor_id: 'doc_983',
-    amount: 350.00,
-    due_date: '2026-06-15',
-    status: 'pending',
-    nfe_status: 'not_issued',
-    created_at: '2026-06-01T10:00:00Z',
-    auto_emit_nfe: true
-  },
-  {
-    id: 'bill_2',
-    patient_id: 'pat_3', // Ana Costa
-    doctor_id: 'doc_983',
-    amount: 350.00,
-    due_date: '2026-06-05',
-    status: 'paid',
-    nfe_status: 'issued',
-    created_at: '2026-05-28T09:00:00Z',
-    auto_emit_nfe: true
-  },
-  {
-    id: 'bill_3',
-    patient_id: 'pat_5', // Clara Mendes
-    doctor_id: 'doc_983',
-    amount: 400.00,
-    due_date: '2026-05-30',
-    status: 'paid',
-    nfe_status: 'issued',
-    created_at: '2026-05-20T11:00:00Z',
-    auto_emit_nfe: false
-  },
-  {
-    id: 'bill_4',
-    patient_id: 'pat_4', // Daniel Rocha
-    doctor_id: 'doc_983',
-    amount: 350.00,
-    due_date: '2026-06-25',
-    status: 'pending',
-    nfe_status: 'not_issued',
-    created_at: '2026-06-05T14:00:00Z',
-    auto_emit_nfe: true
-  }
-];
+const INITIAL_BILLING: Billing[] = [];
 
 // Initial Diary Entries (WhatsApp inputs)
-const INITIAL_DIARY: DiaryEntry[] = [
-  {
-    id: 'diary_1',
-    patient_id: 'pat_1', // Bruno Alencar (CRISIS ALERT)
-    content: 'Voltei a sentir aquela pressão imensa no peito. Sinto que não vou aguentar mais, tudo parece pesado demais e simplesmente não vejo saída útil para mim... Quero sumir de vez deste plano, cansei de lutar contra os demônios.',
-    sentiment_score: -0.95,
-    crisis_flag: true,
-    created_at: '2026-06-09T08:12:00Z'
-  },
-  {
-    id: 'diary_2',
-    patient_id: 'pat_2', // Elisa Souza (CRISIS ALERT)
-    content: 'Não prego o olho há duas noites seguidas. Minha mente está fervendo de paranoia e estou ouvindo sussurros estranhos no corredor. Acho que vou tomar todos os comprimidos da caixa para ver se isso cala a boca de uma vez por todas.',
-    sentiment_score: -0.92,
-    crisis_flag: true,
-    created_at: '2026-06-09T09:44:00Z'
-  },
-  {
-    id: 'diary_3',
-    patient_id: 'pat_3', // Ana Costa (Stable/CBT positive)
-    content: 'Hoje acordei angustiada, mas apliquei o RPD (Registro de Pensamentos Disfuncionais) que combinamos. Descobri que o medo da reunião era irracional e meu dia foi muito melhor depois. Consegui fazer caminhada.',
-    sentiment_score: 0.70,
-    crisis_flag: false,
-    created_at: '2026-06-09T17:30:00Z'
-  },
-  {
-    id: 'diary_4',
-    patient_id: 'pat_4', // Daniel Rocha (Stable/Improving)
-    content: 'Tive uma conversa civilizada com meu irmão hoje, sem estourar. Usei a barreira de 5 segundos antes de responder. Senti que mantive as rédeas da minha agressividade. Um pequeno triunfo.',
-    sentiment_score: 0.65,
-    crisis_flag: false,
-    created_at: '2026-06-08T19:15:00Z'
-  }
-];
+const INITIAL_DIARY: DiaryEntry[] = [];
 
 // Initial Medical Records
-const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
-  {
-    id: 'rec_1',
-    patient_id: 'pat_3', // Ana Costa
-    doctor_id: 'doc_983',
-    evolution_text: 'Paciente compareceu à consulta e relatou melhora significativa nos episódios agudos de ansiedade social pós-implementação de técnicas cognição-narrativa e Registro de Pensamentos Disfuncionais (RPD).\n\nAnálise de crença central revela necessidade de aprofundamento na autoexpectativa de desempenho para a próxima sessão.',
-    ai_summary: 'Adesão positiva à TCC e aplicação de RPD. Redução de ansiedade social reportada. Foco na reestruturação cognitiva de crenças de autoexpectativa de rendimento na próxima consulta clínica.',
-    signature_status: 'signed_icp',
-    signed_at: '2026-06-09T10:00:00Z',
-    created_at: '2026-06-09T09:00:00Z'
-  }
-];
+const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [];
 
 // LocalStorage Helper Getters / Setters
 function getOrInit<T>(key: string, initial: T): T {
@@ -340,6 +135,27 @@ function save<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+// Helper for Firestore
+async function persistToFirestore(collectionName: string, id: string, docData: any) {
+  try {
+    if (auth.currentUser) {
+      await setDoc(doc(db, collectionName, id), docData, { merge: true });
+    }
+  } catch (err) {
+    console.error('Failed to sync to Firestore: ', err);
+  }
+}
+
+async function removeFirestoreDoc(collectionName: string, id: string) {
+  try {
+    if (auth.currentUser) {
+      await deleteDoc(doc(db, collectionName, id));
+    }
+  } catch (err) {
+    console.error('Failed to delete from Firestore: ', err);
+  }
+}
+
 export const dataManager = {
   getDoctors: (): Doctor[] => getOrInit('cm_doctors', INITIAL_DOCTORS),
   saveDoctors: (docs: Doctor[]) => save('cm_doctors', docs),
@@ -357,10 +173,20 @@ export const dataManager = {
     const idx = docs.findIndex(d => d.id === doc.id);
     if(idx >= 0) { docs[idx] = doc; } else { docs.push(doc); }
     dataManager.saveDoctors(docs);
+    persistToFirestore('doctors', doc.id, doc);
   },
 
-  getPatients: (): Patient[] => getOrInit('cm_patients', INITIAL_PATIENTS),
-  savePatients: (pats: Patient[]) => save('cm_patients', pats),
+  getPatients: (): Patient[] => {
+    const docId = dataManager.getDoctor().id;
+    return getOrInit<Patient[]>('cm_patients', INITIAL_PATIENTS).filter(p => p.doctor_id === docId);
+  },
+  savePatients: (pats: Patient[]) => {
+    // Save only patients from the current doctor, merge with existing
+    const docId = dataManager.getDoctor().id;
+    const allPats = getOrInit<Patient[]>('cm_patients', INITIAL_PATIENTS).filter(p => p.doctor_id !== docId);
+    save('cm_patients', [...allPats, ...pats]);
+    // Optionally firestore batch save, but we'll do individual items elsewhere
+  },
   addPatient: (pat: Omit<Patient, 'id' | 'doctor_id' | 'created_at'>): Patient => {
     const list = dataManager.getPatients();
     const newPat: Patient = {
@@ -371,11 +197,19 @@ export const dataManager = {
     };
     list.push(newPat);
     dataManager.savePatients(list);
+    persistToFirestore('patients', newPat.id, newPat);
     return newPat;
   },
 
-  getAppointments: (): Appointment[] => getOrInit('cm_appointments', INITIAL_APPOINTMENTS),
-  saveAppointments: (apps: Appointment[]) => save('cm_appointments', apps),
+  getAppointments: (): Appointment[] => {
+    const docId = dataManager.getDoctor().id;
+    return getOrInit<Appointment[]>('cm_appointments', INITIAL_APPOINTMENTS).filter(a => a.doctor_id === docId);
+  },
+  saveAppointments: (apps: Appointment[]) => {
+    const docId = dataManager.getDoctor().id;
+    const allApps = getOrInit<Appointment[]>('cm_appointments', INITIAL_APPOINTMENTS).filter(a => a.doctor_id !== docId);
+    save('cm_appointments', [...allApps, ...apps]);
+  },
   addAppointment: (app: Omit<Appointment, 'id' | 'doctor_id'>): Appointment => {
     const list = dataManager.getAppointments();
     const patient = dataManager.getPatients().find(p => p.id === app.patient_id);
@@ -386,6 +220,7 @@ export const dataManager = {
     };
     list.push(newApp);
     dataManager.saveAppointments(list);
+    persistToFirestore('appointments', newApp.id, newApp);
     return newApp;
   },
   updateAppointment: (id: string, appData: Partial<Appointment>): Appointment | null => {
@@ -394,11 +229,19 @@ export const dataManager = {
     if (idx < 0) return null;
     list[idx] = { ...list[idx], ...appData };
     dataManager.saveAppointments(list);
+    persistToFirestore('appointments', id, list[idx]);
     return list[idx];
   },
 
-  getBilling: (): Billing[] => getOrInit('cm_billing', INITIAL_BILLING),
-  saveBilling: (bill: Billing[]) => save('cm_billing', bill),
+  getBilling: (): Billing[] => {
+    const docId = dataManager.getDoctor().id;
+    return getOrInit<Billing[]>('cm_billing', INITIAL_BILLING).filter(b => b.doctor_id === docId);
+  },
+  saveBilling: (bill: Billing[]) => {
+    const docId = dataManager.getDoctor().id;
+    const allBills = getOrInit<Billing[]>('cm_billing', INITIAL_BILLING).filter(b => b.doctor_id !== docId);
+    save('cm_billing', [...allBills, ...bill]);
+  },
   addBilling: (entry: Omit<Billing, 'id' | 'doctor_id' | 'created_at' | 'nfe_status'>): Billing => {
     const list = dataManager.getBilling();
     const patient = dataManager.getPatients().find(p => p.id === entry.patient_id);
@@ -411,11 +254,20 @@ export const dataManager = {
     };
     list.push(newBill);
     dataManager.saveBilling(list);
+    persistToFirestore('billing', newBill.id, newBill);
     return newBill;
   },
 
-  getDiaryEntries: (): DiaryEntry[] => getOrInit('cm_diary', INITIAL_DIARY),
-  saveDiaryEntries: (entries: DiaryEntry[]) => save('cm_diary', entries),
+  getDiaryEntries: (): DiaryEntry[] => {
+    // Diary entries don't have doctor_id directly, they map through patient
+    const patientIds = dataManager.getPatients().map(p => p.id);
+    return getOrInit<DiaryEntry[]>('cm_diary', INITIAL_DIARY).filter(d => patientIds.includes(d.patient_id));
+  },
+  saveDiaryEntries: (entries: DiaryEntry[]) => {
+    const patientIds = dataManager.getPatients().map(p => p.id);
+    const allEntries = getOrInit<DiaryEntry[]>('cm_diary', INITIAL_DIARY).filter(d => !patientIds.includes(d.patient_id));
+    save('cm_diary', [...allEntries, ...entries]);
+  },
   addDiaryEntry: (patient_id: string, content: string): DiaryEntry => {
     const list = dataManager.getDiaryEntries();
     
@@ -451,9 +303,11 @@ export const dataManager = {
       }
     }
 
+    const patient = dataManager.getPatients().find(p => p.id === patient_id);
     const newEntry: DiaryEntry = {
       id: `diary_${Date.now()}`,
       patient_id,
+      doctor_id: patient?.doctor_id || dataManager.getDoctor().id,
       content,
       sentiment_score: parseFloat(score.toFixed(2)),
       crisis_flag: isCrisis,
@@ -462,11 +316,19 @@ export const dataManager = {
     
     list.unshift(newEntry); // Prepend to show immediately in summaries or alerts
     dataManager.saveDiaryEntries(list);
+    persistToFirestore('diary', newEntry.id, newEntry);
     return newEntry;
   },
 
-  getMedicalRecords: (): MedicalRecord[] => getOrInit('cm_medical_records', INITIAL_MEDICAL_RECORDS),
-  saveMedicalRecords: (recs: MedicalRecord[]) => save('cm_medical_records', recs),
+  getMedicalRecords: (): MedicalRecord[] => {
+    const docId = dataManager.getDoctor().id;
+    return getOrInit<MedicalRecord[]>('cm_medical_records', INITIAL_MEDICAL_RECORDS).filter(r => r.doctor_id === docId);
+  },
+  saveMedicalRecords: (recs: MedicalRecord[]) => {
+    const docId = dataManager.getDoctor().id;
+    const allRecs = getOrInit<MedicalRecord[]>('cm_medical_records', INITIAL_MEDICAL_RECORDS).filter(r => r.doctor_id !== docId);
+    save('cm_medical_records', [...allRecs, ...recs]);
+  },
   addMedicalRecord: (rec: Omit<MedicalRecord, 'id' | 'doctor_id' | 'created_at'>): MedicalRecord => {
     const list = dataManager.getMedicalRecords();
     const patient = dataManager.getPatients().find(p => p.id === rec.patient_id);
@@ -478,9 +340,56 @@ export const dataManager = {
     };
     list.push(newRec);
     dataManager.saveMedicalRecords(list);
+    persistToFirestore('medical_records', newRec.id, newRec);
     return newRec;
   },
+  deleteMedicalRecord: (id: string): void => {
+    const list = dataManager.getMedicalRecords();
+    const filtered = list.filter(r => r.id !== id);
+    dataManager.saveMedicalRecords(filtered);
+    removeFirestoreDoc('medical_records', id);
+  },
   
+  // Pulls all data for a doctor from Firestore and overwrites localStorage
+  pullFromFirestore: async (doctorId: string): Promise<void> => {
+    if (!auth.currentUser) return;
+    
+    try {
+      const pats = await getDocs(query(collection(db, 'patients'), where('doctor_id', '==', doctorId)));
+      const apps = await getDocs(query(collection(db, 'appointments'), where('doctor_id', '==', doctorId)));
+      const bills = await getDocs(query(collection(db, 'billing'), where('doctor_id', '==', doctorId)));
+      const medical = await getDocs(query(collection(db, 'medical_records'), where('doctor_id', '==', doctorId)));
+      // Note: Diary doesn't have doctor_id directly. We can fetch it by patients.
+      const patientIds = pats.docs.map(p => p.id);
+      
+      const diaries = [];
+      if (patientIds.length > 0) {
+        // We can only query max 10 patient_id in 'in' clause, so just fetch all diary entries and filter by patient, or ignore for now
+        const diaryDocs = await getDocs(collection(db, 'diary'));
+        diaryDocs.forEach(d => {
+          if (patientIds.includes(d.data().patient_id)) {
+            diaries.push(d.data() as DiaryEntry);
+          }
+        });
+      }
+
+      dataManager.savePatients(pats.docs.map(d => d.data() as Patient));
+      dataManager.saveAppointments(apps.docs.map(d => d.data() as Appointment));
+      dataManager.saveBilling(bills.docs.map(d => d.data() as Billing));
+      dataManager.saveMedicalRecords(medical.docs.map(d => d.data() as MedicalRecord));
+      dataManager.saveDiaryEntries(diaries);
+
+      // We should also pull the doctor doc itself
+      const docSnap = await getDoc(doc(db, 'doctors', doctorId));
+      if (docSnap.exists()) {
+        const docInfo = docSnap.data() as Doctor;
+        dataManager.saveDoctor(docInfo);
+      }
+    } catch (error) {
+      console.warn("Error pulling from Firestore:", error);
+    }
+  },
+
   // Resets the system variables
   resetAll: (): void => {
     localStorage.removeItem('cm_doctors');

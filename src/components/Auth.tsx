@@ -39,11 +39,10 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
       setLoading(false);
 
-      if (doc) {
-        onAuthSuccess(doc);
-      } else {
-        // Se autenticou no firebase mas não tem na lista local (pode acontecer se apagou no client)
-        const newDoc: Doctor = {
+      let currentDoc = doc;
+      if (!currentDoc) {
+        // Se autenticou no firebase mas não tem na lista local
+        currentDoc = {
           id: user.uid,
           name: user.displayName || 'Médico',
           email: user.email || '',
@@ -52,10 +51,14 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           is_configured: false,
           created_at: new Date().toISOString()
         };
-        doctors.push(newDoc);
+        doctors.push(currentDoc);
         dataManager.saveDoctors(doctors);
-        onAuthSuccess(newDoc);
       }
+      
+      await dataManager.pullFromFirestore(currentDoc.id);
+      
+      setLoading(false);
+      onAuthSuccess(currentDoc);
     } catch (e: any) {
       setLoading(false);
       setErrorMsg('Credenciais inválidas. Verifique seu e-mail e tente novamente.');
@@ -86,6 +89,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
       doctors.push(newDoc);
       dataManager.saveDoctors(doctors);
+
+      await dataManager.pullFromFirestore(newDoc.id);
 
       setLoading(false);
       onAuthSuccess(newDoc);
@@ -125,7 +130,10 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         dataManager.saveDoctors(doctors);
       }
 
+      await dataManager.pullFromFirestore(doc.id);
+
       onAuthSuccess(doc);
+      setLoading(false);
     } catch (e: any) {
       console.error(e);
       setErrorMsg('Erro ao fazer login com o Google.');
