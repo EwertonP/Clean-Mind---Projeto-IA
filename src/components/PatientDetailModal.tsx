@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download } from 'lucide-react';
-import { Patient, dataManager } from '../data';
+import React, { useState, useRef } from 'react';
+import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Patient, dataManager, compressImage } from '../data';
 import Markdown from 'react-markdown';
 import jsPDF from 'jspdf';
 import { maskPhone } from '../utils/masks';
@@ -8,28 +8,45 @@ import { maskPhone } from '../utils/masks';
 interface PatientDetailModalProps {
   patient: Patient;
   onClose: () => void;
+  onDelete?: () => void;
   extraData?: any;
 }
 
-export default function PatientDetailModal({ patient, onClose, extraData }: PatientDetailModalProps) {
+export default function PatientDetailModal({ patient, onClose, onDelete, extraData }: PatientDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'clinicos' | 'consultas' | 'prontuarios' | 'diario'>('clinicos');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem(`quick_note_${patient.id}`) || '');
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [medicalHistory, setMedicalHistory] = useState(patient.medical_history || '');
   const [isEditingMedicalHistory, setIsEditingMedicalHistory] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [editProfileForm, setEditProfileForm] = useState({
     name: patient.name,
     email: patient.email || '',
     phone: patient.phone,
     health_insurance: patient.health_insurance || '',
     medical_history: patient.medical_history || '',
-    tags: patient.tags ? patient.tags.join(', ') : ''
+    tags: patient.tags ? patient.tags.join(', ') : '',
+    photo_url: patient.photo_url || ''
   });
 
   const getEmail = () => {
     if (patient.email) return patient.email;
     return patient.name.toLowerCase().replace(' ', '.') + '@email.com';
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result as string);
+        setEditProfileForm({ ...editProfileForm, photo_url: compressed });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSaveProfile = () => {
@@ -46,10 +63,17 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
         ...editProfileForm,
         tags: parsedTags.length > 0 ? parsedTags : undefined
       };
-      // Removing tags string so it is not saved on the object permanently as a string instead of string[]
-      delete (allPatients[updateIndex] as any).tagsString;
       
-      dataManager.updatePatient(patient.id, editProfileForm);
+      const payload: Partial<Patient> = {
+        name: editProfileForm.name,
+        email: editProfileForm.email,
+        phone: editProfileForm.phone,
+        health_insurance: editProfileForm.health_insurance,
+        medical_history: editProfileForm.medical_history,
+        tags: parsedTags.length > 0 ? parsedTags : undefined,
+        photo_url: editProfileForm.photo_url
+      };
+      dataManager.updatePatient(patient.id, payload);
       // Update local medical history state to reflect changes if edited here
       setMedicalHistory(editProfileForm.medical_history);
       // Force modal to use new data (in a real app, patient context/prop would update)
@@ -59,6 +83,7 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
       patient.health_insurance = editProfileForm.health_insurance;
       patient.medical_history = editProfileForm.medical_history;
       patient.tags = parsedTags.length > 0 ? parsedTags : undefined;
+      patient.photo_url = editProfileForm.photo_url;
     }
     setIsEditingProfile(false);
   };
@@ -183,6 +208,32 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
           {isEditingProfile ? (
             <div className="w-full mr-12 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="font-bold text-slate-900 mb-4 text-lg">Editar Dados do Paciente</h3>
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                  {editProfileForm.photo_url ? (
+                    <img src={editProfileForm.photo_url} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="h-6 w-6 text-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-200 transition-colors"
+                  >
+                    Escolher Foto
+                  </button>
+                  <p className="text-xs text-slate-500 mt-1">PNG, JPG, max 2MB</p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
@@ -217,8 +268,12 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
           ) : (
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between w-full">
               <div className="flex items-center space-x-5">
-                <div className="w-20 h-20 rounded-full bg-[#C1E2A4]/30 border border-[#C1E2A4] flex items-center justify-center shrink-0">
-                  <span className="text-3xl font-bold text-[#192F28]">{patient.name.charAt(0)}</span>
+                <div className="w-20 h-20 rounded-full bg-[#C1E2A4]/30 border border-[#C1E2A4] flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                  {patient.photo_url ? (
+                    <img src={patient.photo_url} alt={patient.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-3xl font-bold text-[#192F28]">{patient.name.charAt(0)}</span>
+                  )}
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
@@ -270,10 +325,48 @@ export default function PatientDetailModal({ patient, onClose, extraData }: Pati
                   <Download className="h-4 w-4" />
                   <span>Exportar Prontuário</span>
                 </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="bg-white text-red-600 hover:text-red-700 text-sm border border-red-200 hover:border-red-300 font-semibold px-4 py-2 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Excluir</span>
+                </button>
               </div>
             </div>
           )}
         </div>
+
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in text-left">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Excluir Paciente?</h3>
+              <p className="text-sm text-slate-500 mb-6">
+                Tem certeza que deseja remover este paciente? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex w-full space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    if (onDelete) onDelete();
+                  }}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors cursor-pointer"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="px-8 border-b border-slate-200 bg-white shrink-0">

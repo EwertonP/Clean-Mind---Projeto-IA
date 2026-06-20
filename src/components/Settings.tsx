@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2 } from 'lucide-react';
 import { connectGoogleCalendar, isGoogleCalendarConnected } from '../googleCalendar';
-import { dataManager } from '../data';
+import { dataManager, compressImage } from '../data';
 import { maskCNPJ, maskDate, maskPhone, maskCEP } from '../utils/masks';
 import { getStates, getCities, fetchAddressByCep, IBGEState, IBGECity } from '../utils/ibge';
 
-export default function Settings() {
+export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: () => void }) {
   const doc = dataManager.getDoctor();
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'integrations' | 'whatsapp'>('profile');
   const [googleConnected, setGoogleConnected] = useState(isGoogleCalendarConnected());
   const [isEditing, setIsEditing] = useState(doc?.is_configured === false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Clinic profile state
   const [profileData, setProfileData] = useState(() => {
@@ -32,6 +33,7 @@ export default function Settings() {
       phone: doc?.phone || '',
       email: doc?.email || '',
       website: doc?.clinic_website || '',
+      consultationPrice: doc?.consultation_price?.toString() || '',
       businessHoursStart: doc?.business_hours?.start || '',
       businessHoursEnd: doc?.business_hours?.end || '',
       businessDays: doc?.business_hours?.days || '',
@@ -82,14 +84,31 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData(prev => ({ ...prev, logo: reader.result as string }));
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result as string);
+        setProfileData(prev => ({ ...prev, logo: compressed }));
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSave = () => {
+    // Validate required fields
+    const requiredFields = [
+      'name', 'specialty', 'numberOfRooms', 'description', 'cnpj', 'founded',
+      'address', 'neighborhood', 'zip', 'city', 'state', 'phone', 'email',
+      'website', 'businessHoursStart', 'businessHoursEnd', 'businessDays'
+    ];
+
+    const missingFields = requiredFields.filter(field => !profileData[field as keyof typeof profileData]);
+
+    if (missingFields.length > 0) {
+      setValidationErrors(missingFields);
+      alert('Por favor, preencha todas as informações do perfil da clínica para prosseguir.');
+      return;
+    }
+
+    setValidationErrors([]);
     setIsEditing(false);
     // Em um app real, os dados do profile seriam salvos globalmente.
     // Aqui sincronizamos as salas pro doctor logado para a Agenda reconhecer:
@@ -115,6 +134,7 @@ export default function Settings() {
         doc.clinic_website = profileData.website;
         doc.clinic_address = `${profileData.address}, ${profileData.neighborhood} - ${profileData.city}/${profileData.state} - CEP: ${profileData.zip}`;
         doc.custom_signature = profileData.custom_signature;
+        doc.consultation_price = profileData.consultationPrice ? parseFloat(profileData.consultationPrice.replace(',', '.')) : undefined;
         doc.clinic_rooms = Array.from({length: roomsNum}, (_, i) => `Sala ${i + 1}`);
         doc.business_hours = {
           start: profileData.businessHoursStart,
@@ -123,6 +143,10 @@ export default function Settings() {
         };
         doc.is_configured = true;
         dataManager.saveDoctor(doc);
+        
+        if (onRefreshDashboard) {
+          onRefreshDashboard();
+        }
       }
     }
     alert('Configurações salvas da Clínica One atualizadas com sucesso!');
@@ -222,7 +246,7 @@ export default function Settings() {
                   <div className="flex justify-between items-start">
                     <div>
                       {isEditing ? (
-                        <input type="text" name="name" value={profileData.name} onChange={handleChange} placeholder="Nome da Clínica" className="text-2xl font-bold text-slate-900 border border-slate-300 rounded px-2 py-1 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-[#C1E2A4]" />
+                        <input type="text" name="name" value={profileData.name} onChange={handleChange} placeholder="Nome da Clínica" className={`text-2xl font-bold text-slate-900 border rounded px-2 py-1 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] ${validationErrors.includes('name') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                       ) : (
                         <h2 className="text-2xl font-bold text-slate-900">{profileData.name || 'Nome da Clínica'}</h2>
                       )}
@@ -253,7 +277,7 @@ export default function Settings() {
                     )}
                   </div>
                   {isEditing ? (
-                    <textarea name="description" value={profileData.description} onChange={handleChange} rows={3} placeholder="Descreva sua clínica..." className="text-sm text-slate-700 mt-4 leading-relaxed w-full border border-slate-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-[#C1E2A4]" />
+                    <textarea name="description" value={profileData.description} onChange={handleChange} rows={3} placeholder="Descreva sua clínica..." className={`text-sm text-slate-700 mt-4 leading-relaxed w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] ${validationErrors.includes('description') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                   ) : (
                     <p className="text-sm text-slate-600 mt-4 leading-relaxed max-w-3xl">
                       {profileData.description || 'Nenhuma descrição adicionada.'}
@@ -297,7 +321,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">CNPJ</span>
                     {isEditing ? (
-                      <input type="text" name="cnpj" value={profileData.cnpj} onChange={handleChange} placeholder="00.000.000/0000-00" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="cnpj" value={profileData.cnpj} onChange={handleChange} placeholder="00.000.000/0000-00" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('cnpj') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.cnpj || '00.000.000/0000-00'}</p>
                     )}
@@ -305,7 +329,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Data de Fundação</span>
                     {isEditing ? (
-                      <input type="text" name="founded" value={profileData.founded} onChange={handleChange} placeholder="DD/MM/AAAA" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="founded" value={profileData.founded} onChange={handleChange} placeholder="DD/MM/AAAA" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('founded') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900 flex items-center space-x-2">
                          <CalendarDays className="w-4 h-4 text-slate-400" />
@@ -316,7 +340,7 @@ export default function Settings() {
                   <div className="md:col-span-2">
                     <span className="text-xs text-slate-500 font-medium block mb-1">Especialidade Principal</span>
                     {isEditing ? (
-                      <input type="text" name="specialty" value={profileData.specialty} onChange={handleChange} placeholder="Sua Especialidade" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="specialty" value={profileData.specialty} onChange={handleChange} placeholder="Sua Especialidade" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('specialty') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.specialty || 'Não definida'}</p>
                     )}
@@ -324,7 +348,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Número de Salas (Atendimento Presencial)</span>
                     {isEditing ? (
-                      <input type="number" min="1" name="numberOfRooms" value={profileData.numberOfRooms} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="number" min="1" name="numberOfRooms" value={profileData.numberOfRooms} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('numberOfRooms') ? 'border-red-500 bg-red-50 outline-none' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.numberOfRooms} Salas</p>
                     )}
@@ -339,15 +363,23 @@ export default function Settings() {
                   <div className="md:col-span-2">
                     <span className="text-xs text-slate-500 font-medium block mb-1">Dias de Funcionamento</span>
                     {isEditing ? (
-                      <input type="text" name="businessDays" value={profileData.businessDays} onChange={handleChange} placeholder="Ex: Segunda a Sábado" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="businessDays" value={profileData.businessDays} onChange={handleChange} placeholder="Ex: Segunda a Sábado" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('businessDays') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.businessDays || 'Não configurado'}</p>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <span className="text-xs text-slate-500 font-medium block mb-1">Valor da Consulta Padrão (R$)</span>
+                    {isEditing ? (
+                      <input type="number" step="0.01" name="consultationPrice" value={profileData.consultationPrice} onChange={handleChange} placeholder="Ex: 350.00" className="text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 border-slate-300" />
+                    ) : (
+                      <p className="text-[15px] font-medium text-slate-900">{profileData.consultationPrice ? `R$ ${parseFloat(profileData.consultationPrice).toFixed(2)}` : 'Não informado'}</p>
                     )}
                   </div>
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Horário de Abertura</span>
                     {isEditing ? (
-                      <input type="time" name="businessHoursStart" value={profileData.businessHoursStart} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="time" name="businessHoursStart" value={profileData.businessHoursStart} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('businessHoursStart') ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.businessHoursStart || '00:00'}</p>
                     )}
@@ -355,7 +387,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Horário de Fechamento</span>
                     {isEditing ? (
-                      <input type="time" name="businessHoursEnd" value={profileData.businessHoursEnd} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="time" name="businessHoursEnd" value={profileData.businessHoursEnd} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('businessHoursEnd') ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.businessHoursEnd || '00:00'}</p>
                     )}
@@ -370,7 +402,7 @@ export default function Settings() {
                   <div className="md:col-span-2">
                     <span className="text-xs text-slate-500 font-medium block mb-1">Rua / Avenida</span>
                     {isEditing ? (
-                      <input type="text" name="address" value={profileData.address} onChange={handleChange} placeholder="Rua / Avenida, Número" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="address" value={profileData.address} onChange={handleChange} placeholder="Rua / Avenida, Número" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('address') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900 flex items-center space-x-2">
                          <MapPin className="w-4 h-4 text-slate-400" />
@@ -381,7 +413,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Bairro</span>
                     {isEditing ? (
-                      <input type="text" name="neighborhood" value={profileData.neighborhood} onChange={handleChange} placeholder="Bairro" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="neighborhood" value={profileData.neighborhood} onChange={handleChange} placeholder="Bairro" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('neighborhood') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.neighborhood || 'Não informado'}</p>
                     )}
@@ -389,7 +421,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">CEP</span>
                     {isEditing ? (
-                      <input type="text" name="zip" value={profileData.zip} onChange={handleChange} onBlur={handleCEPBlur} placeholder="00000-000" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="zip" value={profileData.zip} onChange={handleChange} onBlur={handleCEPBlur} placeholder="00000-000" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('zip') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.zip || '00000-000'}</p>
                     )}
@@ -397,7 +429,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Estado</span>
                     {isEditing ? (
-                      <select name="state" value={profileData.state} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600 bg-transparent pb-1">
+                      <select name="state" value={profileData.state} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 pb-1 ${validationErrors.includes('state') ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-transparent'}`}>
                         <option value="">Selecione o Estado</option>
                         {statesList.map(s => (
                           <option key={s.id} value={s.sigla}>{s.nome}</option>
@@ -410,7 +442,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Cidade</span>
                     {isEditing ? (
-                      <select name="city" value={profileData.city} onChange={handleChange} className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600 bg-transparent pb-1" disabled={!profileData.state}>
+                      <select name="city" value={profileData.city} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 pb-1 ${validationErrors.includes('city') ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-transparent'}`} disabled={!profileData.state}>
                         <option value="">Selecione a Cidade</option>
                         {citiesList.map(c => (
                           <option key={c.id} value={c.nome}>{c.nome}</option>
@@ -430,7 +462,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Telefone</span>
                     {isEditing ? (
-                      <input type="text" name="phone" value={profileData.phone} onChange={handleChange} placeholder="(00) 00000-0000" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="phone" value={profileData.phone} onChange={handleChange} placeholder="(00) 00000-0000" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('phone') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900 flex items-center space-x-2">
                          <Phone className="w-4 h-4 text-slate-400" />
@@ -441,7 +473,7 @@ export default function Settings() {
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Email</span>
                     {isEditing ? (
-                      <input type="text" name="email" value={profileData.email} onChange={handleChange} placeholder="contato@clinica.com" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="email" value={profileData.email} onChange={handleChange} placeholder="contato@clinica.com" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('email') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900 flex items-center space-x-2">
                          <Mail className="w-4 h-4 text-slate-400" />
@@ -452,7 +484,7 @@ export default function Settings() {
                   <div className="md:col-span-2">
                     <span className="text-xs text-slate-500 font-medium block mb-1">Website</span>
                     {isEditing ? (
-                      <input type="text" name="website" value={profileData.website} onChange={handleChange} placeholder="www.seusite.com.br" className="text-[15px] font-medium text-slate-900 border-b border-slate-300 w-full focus:outline-none focus:border-slate-600" />
+                      <input type="text" name="website" value={profileData.website} onChange={handleChange} placeholder="www.seusite.com.br" className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('website') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900 flex items-center space-x-2">
                          <Globe className="w-4 h-4 text-slate-400" />
@@ -516,8 +548,8 @@ export default function Settings() {
                   <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Google Calendar</h3>
-                  <p className="text-sm text-slate-500">Sincronize a agenda da clínica e visualize os agendamentos lado a lado com seus compromissos pessoais.</p>
+                  <h3 className="text-lg font-bold text-slate-900">Google Calendar (Exportação)</h3>
+                  <p className="text-sm text-slate-500">Sincronize a agenda exportando automaticamente as sessões do CleanMind para o seu Google Calendar.</p>
                 </div>
               </div>
               <div>

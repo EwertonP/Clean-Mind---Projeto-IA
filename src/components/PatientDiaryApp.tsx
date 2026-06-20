@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Search, Mail, Phone, Plus, MessageCircle, Send, CheckCircle2, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { User, Search, Mail, Phone, Plus, MessageCircle, Send, CheckCircle2, Clock, TrendingUp, TrendingDown, Minus, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Patient, Appointment, dataManager } from '../data';
+import { Patient, Appointment, dataManager, compressImage } from '../data';
 import PatientDetailModal from './PatientDetailModal';
 import { maskPhone } from '../utils/masks';
 
@@ -24,20 +24,21 @@ const MOCK_EXTRA_DATA: Record<string, any> = {
 export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: PatientDiaryAppProps) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const doctors = dataManager.getDoctors();
+  const doctors = dataManager.getDoctors().filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientEmail, setNewPatientEmail] = useState('');
   const [newPatientPhone, setNewPatientPhone] = useState('');
   const [newPatientDiag, setNewPatientDiag] = useState('');
-  const [newPatientQuickRecord, setNewPatientQuickRecord] = useState('');
   const [newPatientTags, setNewPatientTags] = useState('');
   const [newPatientInsurance, setNewPatientInsurance] = useState('Particular');
   const [newPatientDoctorId, setNewPatientDoctorId] = useState(doctors[0]?.id || '');
+  const [newPatientPhotoUrl, setNewPatientPhotoUrl] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
   const [selectedPatientForDetail, setSelectedPatientForDetail] = useState<Patient | null>(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [formErrors, setFormErrors] = useState<{name?: string, email?: string, phone?: string}>({});
 
   useEffect(() => {
     const list = dataManager.getPatients();
@@ -53,9 +54,34 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
     setAppointments(dataManager.getAppointments());
   }, [triggerRefresh]);
 
+  const validateForm = () => {
+    const errors: {name?: string, email?: string, phone?: string} = {};
+    if (!newPatientName.trim()) errors.name = 'O nome é obrigatório';
+    if (!newPatientEmail.trim()) errors.email = 'O email é obrigatório';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newPatientEmail)) errors.email = 'Email em formato inválido';
+    
+    if (!newPatientPhone.trim()) errors.phone = 'O telefone é obrigatório';
+    else if (newPatientPhone.replace(/\D/g, '').length < 10) errors.phone = 'Telefone inválido';
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result as string);
+        setNewPatientPhotoUrl(compressed);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreatePatient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPatientName.trim() || !newPatientPhone.trim() || !newPatientEmail.trim() || !newPatientDoctorId) return;
+    if (!validateForm() || !newPatientDoctorId) return;
     
     // Add logic to save the new fields
     const list = dataManager.getPatients();
@@ -71,26 +97,18 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
       phone: newPatientPhone,
       health_insurance: newPatientInsurance,
       status: 'active',
-      tags: parsedTags.length > 0 ? parsedTags : undefined
+      tags: parsedTags.length > 0 ? parsedTags : undefined,
+      photo_url: newPatientPhotoUrl || undefined
     });
-
-    if (newPatientQuickRecord.trim()) {
-      dataManager.addMedicalRecord({
-        patient_id: newPat.id,
-        evolution_text: newPatientQuickRecord,
-        ai_summary: 'Resumo inicial via cadastro rápido',
-        signature_status: 'unsigned'
-      });
-    }
     
     setPatients(dataManager.getPatients());
     setNewPatientName('');
     setNewPatientEmail('');
     setNewPatientPhone('');
     setNewPatientDiag('');
-    setNewPatientQuickRecord('');
     setNewPatientTags('');
     setNewPatientInsurance('Particular');
+    setNewPatientPhotoUrl('');
     setShowPatientForm(false);
     onRefreshDashboard();
     
@@ -133,8 +151,8 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
 
       {showPatientForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 bg-white flex items-center justify-between">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-slate-100 bg-white flex items-center justify-between z-10 shrink-0">
               <h3 className="font-bold text-lg text-slate-900">
                 Novo Paciente
               </h3>
@@ -146,17 +164,39 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
               </button>
             </div>
             
-            <form onSubmit={handleCreatePatient} className="p-6 bg-white space-y-5">
+            <form onSubmit={handleCreatePatient} className="p-6 bg-white space-y-5 overflow-y-auto w-full max-h-full">
+              <div className="flex justify-center mb-6">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    {newPatientPhotoUrl ? (
+                      <img src={newPatientPhotoUrl} alt="Foto" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="h-10 w-10 text-slate-400" />
+                    )}
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <ImageIcon className="h-6 w-6" />
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-1.5">Nome Completo *</label>
                 <input
                   type="text"
                   required
                   value={newPatientName}
-                  onChange={(e) => setNewPatientName(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                  onChange={(e) => {
+                    setNewPatientName(e.target.value);
+                    if (formErrors.name) setFormErrors(prev => ({ ...prev, name: undefined }));
+                  }}
+                  onBlur={() => {
+                    if (!newPatientName.trim()) setFormErrors(prev => ({ ...prev, name: 'O nome é obrigatório' }));
+                  }}
+                  className={`w-full px-4 py-2.5 border ${formErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                   placeholder="Ex: Maria Silva Santos"
                 />
+                {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,10 +206,18 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                     type="email"
                     required
                     value={newPatientEmail}
-                    onChange={(e) => setNewPatientEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                    onChange={(e) => {
+                      setNewPatientEmail(e.target.value);
+                      if (formErrors.email) setFormErrors(prev => ({ ...prev, email: undefined }));
+                    }}
+                    onBlur={() => {
+                      if (!newPatientEmail.trim()) setFormErrors(prev => ({ ...prev, email: 'O email é obrigatório' }));
+                      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newPatientEmail)) setFormErrors(prev => ({ ...prev, email: 'Email em formato inválido' }));
+                    }}
+                    className={`w-full px-4 py-2.5 border ${formErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                     placeholder="email@exemplo.com"
                   />
+                  {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1.5">Telefone/WhatsApp *</label>
@@ -177,13 +225,21 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                     type="text"
                     required
                     value={newPatientPhone}
-                    onChange={(e) => setNewPatientPhone(maskPhone(e.target.value))}
+                    onChange={(e) => {
+                      setNewPatientPhone(maskPhone(e.target.value));
+                      if (formErrors.phone) setFormErrors(prev => ({ ...prev, phone: undefined }));
+                    }}
+                    onBlur={() => {
+                      if (!newPatientPhone.trim()) setFormErrors(prev => ({ ...prev, phone: 'O telefone é obrigatório' }));
+                      else if (newPatientPhone.replace(/\D/g, '').length < 10) setFormErrors(prev => ({ ...prev, phone: 'Telefone inválido' }));
+                    }}
                     pattern="\(\d{2}\) \d{4,5}-\d{4}"
                     minLength={14}
                     maxLength={15}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                    className={`w-full px-4 py-2.5 border ${formErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                     placeholder="(11) 98765-4321"
                   />
+                  {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
                 </div>
               </div>
 
@@ -241,27 +297,6 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-1.5">Prontuário Rápido (Opcional)</label>
-                <textarea
-                  value={newPatientQuickRecord}
-                  onChange={(e) => setNewPatientQuickRecord(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC] resize-none"
-                  placeholder="Insira uma observação clínica inicial sobre o paciente (será salva como Rascunho de Prontuário)."
-                ></textarea>
-              </div>
-
-              <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl p-4 flex items-start space-x-3 mt-2">
-                <MessageCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 mb-0.5">Convite via WhatsApp</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Ao salvar, você poderá enviar um convite automático via WhatsApp para o paciente criar sua conta no cleanmind. e começar a usar o diário terapêutico.
-                  </p>
-                </div>
-              </div>
-
               <div className="pt-2 flex items-center space-x-3">
                 <button
                   type="button"
@@ -284,8 +319,11 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6 mb-2">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Pacientes</h1>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Pacientes</h1>
+          <p className="text-sm text-slate-500 mt-1">Gerencie a lista de pacientes ativos e inativos da clínica.</p>
+        </div>
         <button
           onClick={() => setShowPatientForm(true)}
           className="bg-[#C1E2A4] text-slate-900 text-sm border border-[#b0d292] font-semibold px-4 py-2 rounded-lg hover:bg-[#b0d292] transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
@@ -387,12 +425,16 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                 >
                   <td className="py-4 px-8">
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 font-bold text-sm tracking-wide">
-                        {patient.name.trim().split(' ').filter(Boolean).length === 1 
-                          ? patient.name.trim().substring(0, 2).toUpperCase() 
-                          : patient.name.trim().split(' ').filter(Boolean).length > 0 
-                            ? (patient.name.trim().split(' ').filter(Boolean)[0][0] + patient.name.trim().split(' ').filter(Boolean)[patient.name.trim().split(' ').filter(Boolean).length - 1][0]).toUpperCase()
-                            : '?'}
+                      <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 font-bold text-sm tracking-wide overflow-hidden border border-slate-300">
+                        {patient.photo_url ? (
+                          <img src={patient.photo_url} alt={patient.name} className="w-full h-full object-cover" />
+                        ) : (
+                          patient.name.trim().split(' ').filter(Boolean).length === 1 
+                            ? patient.name.trim().substring(0, 2).toUpperCase() 
+                            : patient.name.trim().split(' ').filter(Boolean).length > 0 
+                              ? (patient.name.trim().split(' ').filter(Boolean)[0][0] + patient.name.trim().split(' ').filter(Boolean)[patient.name.trim().split(' ').filter(Boolean).length - 1][0]).toUpperCase()
+                              : '?'
+                        )}
                       </div>
                       <div className="flex flex-col justify-center">
                        <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight flex items-center space-x-2">
@@ -497,6 +539,13 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
         <PatientDetailModal
           patient={selectedPatientForDetail}
           onClose={() => setSelectedPatientForDetail(null)}
+          onDelete={() => {
+            dataManager.deletePatient(selectedPatientForDetail.id);
+            onRefreshDashboard();
+            setSelectedPatientForDetail(null);
+            setToastMessage('Paciente excluído com sucesso!');
+            setTimeout(() => setToastMessage(''), 3000);
+          }}
           extraData={MOCK_EXTRA_DATA[selectedPatientForDetail.name]}
         />
       )}

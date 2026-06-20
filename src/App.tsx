@@ -36,7 +36,9 @@ export default function App() {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedPatientParam, setSelectedPatientParam] = useState<string | undefined>(undefined);
+  const [billingDraftParam, setBillingDraftParam] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [globalToastMessage, setGlobalToastMessage] = useState('');
   
   // Dynamic counter to force refresh of localStorage states across tabs
@@ -81,14 +83,27 @@ export default function App() {
     }
     
     prevAlertCount.current = activeAlerts.length;
+
+    // Refresh doctor profile data
+    const sessionId = localStorage.getItem('cm_doctor_session');
+    if (sessionId) {
+      const doctors = dataManager.getDoctors();
+      const doc = doctors.find(d => d.id === sessionId);
+      if (doc) {
+        setDoctor(doc);
+      }
+    }
   }, [triggerCount]);
 
   const handleRefreshAll = () => {
     setTriggerCount(prev => prev + 1);
   };
 
-  const handleNavigateWithParams = (tab: string, patientId?: string) => {
+  const handleNavigateWithParams = (tab: string, patientId?: string, draft?: any) => {
     setSelectedPatientParam(patientId);
+    if (draft) {
+      setBillingDraftParam(draft);
+    }
     setActiveTab(tab);
     setIsMobileMenuOpen(false); // Close menu on navigation
     handleRefreshAll();
@@ -113,6 +128,41 @@ export default function App() {
     }} />;
   }
 
+  if (doctor.is_configured === false) {
+    return (
+      <div className="min-h-screen bg-[#FBFBFA] font-sans text-slate-900 flex flex-col items-center py-8 px-4 sm:px-6">
+        <div className="w-full max-w-5xl">
+          <div className="flex justify-between items-center mb-8 px-2">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-sm">
+                C
+              </div>
+              <h1 className="text-xl md:text-2xl font-serif font-bold tracking-tight text-slate-900">cleanmind.</h1>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-slate-500 hover:text-slate-700 flex items-center space-x-2 text-sm font-medium transition cursor-pointer bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm"
+              title="Encerrar Sessão"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl mb-6 flex items-start space-x-3">
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-800 text-sm">Configuração Obrigatória</h3>
+              <p className="text-amber-700 text-sm mt-1">Por favor, preencha todas as informações do perfil da clínica para liberar o acesso ao sistema completo.</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <Settings onRefreshDashboard={handleRefreshAll} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FBFBFA] font-sans text-slate-900 flex">
       
@@ -129,16 +179,20 @@ export default function App() {
         <div className="flex flex-col flex-grow">
           
           {/* Brand Seal header */}
-          <div className="p-5 md:p-6 flex items-center justify-between">
+          <div className="p-5 md:p-6 flex items-center justify-between z-10 relative">
             <div>
               <h1 className="text-xl md:text-2xl font-serif font-bold tracking-tight text-slate-900 mb-4 md:mb-6">cleanmind.</h1>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-xs md:text-sm">
-                  C
-                </div>
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                {doctor?.clinic_logo ? (
+                  <img src={doctor.clinic_logo} alt="Logo da Clínica" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover shrink-0 border border-slate-200" />
+                ) : (
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-xs md:text-sm shrink-0">
+                    {doctor?.clinic_name ? doctor.clinic_name.charAt(0).toUpperCase() : 'C'}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs md:text-sm font-bold text-slate-900 truncate">Clínica One</p>
-                  <p className="text-[10px] md:text-[11px] text-slate-500 truncate">Seção Monteiro</p>
+                  <p className="text-xs md:text-sm font-bold text-slate-900 truncate" title={doctor?.clinic_name}>{doctor?.clinic_name || 'Sua Clínica'}</p>
+                  <p className="text-[10px] md:text-[11px] text-slate-500 truncate" title={doctor?.name}>{doctor?.name || 'Médico'}</p>
                 </div>
               </div>
             </div>
@@ -154,55 +208,73 @@ export default function App() {
 
           {/* Navigation Links list */}
           <nav className="flex-grow px-3 md:px-4 space-y-1 mt-2 overflow-y-auto">
-            {doctor?.is_configured !== false ? (
+            {true ? (
               <>
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigateWithParams('dashboard')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  </motion.div>
                   <span>Dashboard</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigateWithParams('agenda')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'agenda' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <Calendar className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Calendar className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  </motion.div>
                   <span>Agenda</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigateWithParams('financeiro')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'financeiro' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <Wallet className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Wallet className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  </motion.div>
                   <span>Financeiro</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigateWithParams('prontuario')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'prontuario' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <FileText className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <FileText className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  </motion.div>
                   <span>Prontuários</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigateWithParams('paciente')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'paciente' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <User className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <User className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  </motion.div>
                   <span>Pacientes</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleNavigateWithParams('medicos')}
                   className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'medicos' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
-                  <Stethoscope className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Stethoscope className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
+                  </motion.div>
                   <span>Médicos</span>
-                </button>
+                </motion.button>
               </>
             ) : (
               <div className="px-4 py-4 text-xs text-slate-500 font-medium text-center bg-amber-50 rounded-lg border border-amber-100">
@@ -213,39 +285,69 @@ export default function App() {
         </div>
 
         {/* Doctor Identity Block */}
-        <div className="p-3 md:p-4 border-t border-slate-200 mt-auto">
-          <button 
-            onClick={() => handleNavigateWithParams('configuracoes')}
-            className={`w-full text-left px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'configuracoes' ? 'bg-[#192F28] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            <SlidersHorizontal className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-            <span>Configurações</span>
-          </button>
-          <a
-            href="https://wa.me/5511999999999"
-            target="_blank"
-            rel="noreferrer" 
-            className="w-full text-left px-3 md:px-4 py-2 mt-1 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-slate-600 hover:bg-slate-50"
-          >
-            <MessageSquare className="h-4 w-4 md:h-5 md:w-5 shrink-0 text-green-500" />
-            <span>Suporte</span>
-          </a>
+        <div className="p-3 md:p-4 border-t border-slate-200 mt-auto relative">
           
-          <div className="flex items-center justify-between mt-3 md:mt-4 px-3 md:px-4 py-2">
-            <div className="flex items-center space-x-3">
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-[10px] md:text-xs">
-                F
+          <AnimatePresence>
+            {isUserMenuOpen && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50"
+              >
+                <div className="p-2 space-y-1">
+                  <button 
+                    onClick={() => {
+                      handleNavigateWithParams('configuracoes');
+                      setIsUserMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'configuracoes' ? 'bg-[#192F28] text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                    <span>Configurações</span>
+                  </button>
+                  <a
+                    href="https://wa.me/5511999999999"
+                    target="_blank"
+                    rel="noreferrer" 
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-slate-700 hover:bg-slate-50"
+                  >
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <span>Suporte</span>
+                  </a>
+                  <div className="h-px bg-slate-100 my-1"></div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    <span>Sair da conta</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button 
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="w-full flex items-center justify-between px-3 md:px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+          >
+            <div className="flex items-center space-x-3 min-w-0 flex-1 mr-2">
+              <User className="h-5 w-5 md:h-6 md:w-6 text-slate-500 shrink-0" />
+              <div className="min-w-0 flex-1 text-left">
+                <span className="text-xs md:text-sm font-medium text-slate-900 block truncate" title={doctor?.email}>
+                  {doctor?.email || 'Usuário'}
+                </span>
+                <span className="text-[10px] text-slate-500 block truncate">
+                  Opções e Perfil
+                </span>
               </div>
-              <span className="text-xs md:text-sm font-medium text-slate-900">Fulana</span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="text-slate-400 hover:text-slate-700 p-1 rounded transition cursor-pointer"
-              title="Encerrar Sessão Segura"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -298,6 +400,7 @@ export default function App() {
           )}
           {activeTab === 'agenda' && (
             <Agenda 
+              onNavigate={handleNavigateWithParams}
               onRefreshDashboard={handleRefreshAll} 
               triggerRefresh={triggerCount} 
             />
@@ -311,6 +414,8 @@ export default function App() {
           )}
           {activeTab === 'financeiro' && (
             <Billing 
+              initialDraft={billingDraftParam}
+              onClearDraft={() => setBillingDraftParam(null)}
               onRefreshDashboard={handleRefreshAll} 
               triggerRefresh={triggerCount} 
             />
@@ -334,7 +439,7 @@ export default function App() {
             />
           )}
           {activeTab === 'configuracoes' && (
-            <Settings />
+            <Settings onRefreshDashboard={handleRefreshAll} />
           )}
         </main>
 

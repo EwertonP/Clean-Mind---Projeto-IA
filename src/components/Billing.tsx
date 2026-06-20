@@ -6,9 +6,11 @@ import { Billing as BillingType, Patient, dataManager } from '../data';
 interface BillingProps {
   onRefreshDashboard: () => void;
   triggerRefresh: number;
+  initialDraft?: { patientId: string; amount: string; dueDate: string } | null;
+  onClearDraft?: () => void;
 }
 
-export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingProps) {
+export default function Billing({ onRefreshDashboard, triggerRefresh, initialDraft, onClearDraft }: BillingProps) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [billingList, setBillingList] = useState<BillingType[]>([]);
   
@@ -17,16 +19,26 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [amount, setAmount] = useState('350.00');
   const [dueDate, setDueDate] = useState('2026-06-15');
-  const [method, setMethod] = useState<'pix' | 'cartao'>('pix');
+  const [method, setMethod] = useState<'pix' | 'cartao' | 'dinheiro'>('pix');
   const [autoEmitNfe, setAutoEmitNfe] = useState(true);
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState('');
 
+  // Handle draft
+  useEffect(() => {
+    if (initialDraft) {
+      setSelectedPatientId(initialDraft.patientId);
+      setAmount(initialDraft.amount);
+      setDueDate(initialDraft.dueDate);
+      setShowForm(true);
+    }
+  }, [initialDraft]);
+
   useEffect(() => {
     setPatients(dataManager.getPatients());
     setBillingList(dataManager.getBilling());
-    if (selectedPatientId === '' && dataManager.getPatients().length > 0) {
+    if (!initialDraft && selectedPatientId === '' && dataManager.getPatients().length > 0) {
       setSelectedPatientId(dataManager.getPatients()[0].id);
     }
   }, [triggerRefresh]);
@@ -41,15 +53,17 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
       amount: parseFloat(amount),
       due_date: dueDate,
       status: 'pending',
+      payment_method: method,
       auto_emit_nfe: autoEmitNfe
     });
 
     // Reload list
     setBillingList(dataManager.getBilling());
     setShowForm(false);
+    if (onClearDraft) onClearDraft();
     onRefreshDashboard();
 
-    setToastMessage('Fatura criada');
+    setToastMessage('Fatura criada. Aguardando pagamento.');
 
     setTimeout(() => {
       setToastMessage('');
@@ -105,10 +119,10 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
       </AnimatePresence>
 
       {/* Title */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 border-b border-slate-200 pb-5 mb-6">
-        <div className="flex-1">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
+        <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Financeiro</h1>
-          <p className="text-xs text-slate-500 mt-1 max-w-lg">
+          <p className="text-sm text-slate-500 mt-1 max-w-lg">
             Faturamento automatizado, conciliação Pix síncrona e emissão automatizada de notas fiscais de serviço (NFS-e).
           </p>
         </div>
@@ -206,7 +220,7 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Método de Lançamento</label>
-                  <div className="flex gap-4 pt-1.5">
+                  <div className="flex gap-4 pt-1.5 flex-wrap">
                     <label className="flex items-center space-x-2 text-sm text-slate-700 font-medium cursor-pointer">
                       <input
                         type="radio"
@@ -226,6 +240,16 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
                         className="accent-[#192F28] w-4 h-4"
                       />
                       <span>Cartão de Crédito Online</span>
+                    </label>
+                    <label className="flex items-center space-x-2 text-sm text-slate-700 font-medium cursor-pointer">
+                      <input
+                        type="radio"
+                        name="method"
+                        checked={method === 'dinheiro'}
+                        onChange={() => setMethod('dinheiro')}
+                        className="accent-[#192F28] w-4 h-4"
+                      />
+                      <span>Dinheiro (Físico)</span>
                     </label>
                   </div>
                 </div>
@@ -296,7 +320,7 @@ export default function Billing({ onRefreshDashboard, triggerRefresh }: BillingP
                   <tr key={bill.id} className="hover:bg-slate-50/55 transition-colors text-slate-700 font-medium">
                     <td className="p-4">
                       <div className="font-serif font-bold text-sm text-[#192F28]">{getPatientName(bill.patient_id)}</div>
-                      <div className="text-[10px] font-mono text-slate-400">Ref: {bill.id}</div>
+                      <div className="text-[10px] font-mono text-slate-400">Ref: {bill.id} {bill.payment_method ? `| Pagamento via: ${bill.payment_method}` : ''}</div>
                     </td>
                     <td className="p-4 font-mono font-bold text-sm">
                       R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

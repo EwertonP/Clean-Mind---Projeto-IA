@@ -355,15 +355,15 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
       </AnimatePresence>
 
       {/* Header Select Patient */}
-      <div className="flex flex-col gap-5 border-b border-slate-200 pb-5 mb-6">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-start gap-4 border-b border-slate-200 pb-5 mb-6">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Evolução Clínica e Prontuários</h1>
           <p className="text-sm text-slate-500 mt-1">
             Evolução de pacientes no padrão ICP-Brasil integrado a insights diários por inteligência artificial.
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">Filtrar por Paciente:</span>
             <select

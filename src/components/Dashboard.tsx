@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, Calendar, DollarSign, Users, ArrowRight, MessageSquare, Phone, BrainCircuit, Heart, RefreshCw, Layers } from 'lucide-react';
+import { AlertCircle, Calendar, DollarSign, Users, ArrowRight, TrendingUp, TrendingDown, Clock, Laptop, Activity } from 'lucide-react';
 import { Appointment, Patient, Billing, DiaryEntry, dataManager } from '../data';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardProps {
   onNavigate: (tab: string, param?: string) => void;
@@ -13,239 +14,389 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
   const [billing, setBilling] = useState<Billing[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
   
-  const [showSessaoForm, setShowSessaoForm] = useState(false);
-  const [selectedSessaoPatientId, setSelectedSessaoPatientId] = useState('');
-  const [sessaoDate, setSessaoDate] = useState('2026-06-09');
-  const [sessaoTime, setSessaoTime] = useState('14:00');
-
   // Load state values
   useEffect(() => {
-    const listPats = dataManager.getPatients();
-    setPatients(listPats);
+    setPatients(dataManager.getPatients());
     setAppointments(dataManager.getAppointments());
     setBilling(dataManager.getBilling());
     setDiaryEntries(dataManager.getDiaryEntries());
-    if (!selectedSessaoPatientId && listPats.length > 0) {
-      setSelectedSessaoPatientId(listPats[0].id);
-    }
   }, [triggerRefresh]);
 
-  const handleCreateSessao = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSessaoPatientId) return;
-    dataManager.addAppointment({
-      patient_id: selectedSessaoPatientId,
-      date: sessaoDate,
-      start_time: sessaoTime,
-      duration: 50,
-      type: 'online',
-      status: 'confirmed'
-    });
-    setAppointments(dataManager.getAppointments());
-    setShowSessaoForm(false);
-  };
-
   // Calculations for KPIs
+  // Using fixed date matching the app's current context
   const todayStr = '2026-06-09';
   const appointmentsToday = appointments.filter(app => app.date === todayStr);
   const activePatientsCount = patients.filter(p => p.status === 'active').length;
 
-  // Monthly revenue for June 2026
+  const getPatientName = (id: string) => {
+    return patients.find(p => p.id === id)?.name || 'Paciente';
+  };
+
+  const currentDate = new Date('2026-06-09T12:00:00');
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const currentMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+
   const monthlyRevenue = billing
-    .filter(bill => bill.status === 'paid')
+    .filter(bill => bill.status === 'paid' && bill.due_date.startsWith(currentMonthStr))
     .reduce((acc, bill) => acc + bill.amount, 0);
 
-  // Filter diary alerts where crisis_flag is true
+  const pendingRevenue = billing
+    .filter(bill => bill.status === 'pending' && bill.due_date.startsWith(currentMonthStr))
+    .reduce((acc, bill) => acc + bill.amount, 0);
+
   const crisisAlerts = diaryEntries.filter(entry => entry.crisis_flag);
+
+  // Dynamic Chart Data (Last 6 Months)
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const revenueData = [];
+  const sessionsData = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(currentYear, currentMonth - i, 1);
+    const mName = monthNames[d.getMonth()];
+    const mYear = d.getFullYear();
+    const formattedMonth = `${mYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Revenue
+    const monthlyBills = billing.filter(b => b.status === 'paid' && b.due_date.startsWith(formattedMonth));
+    const totalRev = monthlyBills.reduce((acc, bill) => acc + bill.amount, 0);
+    revenueData.push({ name: mName, value: totalRev, color: totalRev > 0 ? '#C1E2A4' : '#e2e8f0' });
+
+    // Sessions (for the bar chart requested)
+    const monthlyApps = appointments.filter(a => a.date.startsWith(formattedMonth));
+    const onlineApps = monthlyApps.filter(a => a.type === 'online').length;
+    const presencialApps = monthlyApps.filter(a => a.type === 'presencial').length;
+    sessionsData.push({ 
+      name: mName, 
+      Online: onlineApps,
+      Presencial: presencialApps
+    });
+  }
+
+  // Modality statistics for current month
+  const currentMonthApps = appointments.filter(a => a.date.startsWith(currentMonthStr));
+  let currentOnlineCount = 0;
+  let currentPresencialCount = 0;
+  currentMonthApps.forEach(a => {
+    if (a.type === 'online') currentOnlineCount++;
+    if (a.type === 'presencial') currentPresencialCount++;
+  });
   
-  // Filter other entries for the 24h recap list
-  const stableEntries = diaryEntries.filter(entry => !entry.crisis_flag);
-
-  const getPatientName = (id: string) => {
-    return patients.find(p => p.id === id)?.name || 'Paciente Não Identificado';
-  };
-
-  const getPatientPhone = (id: string) => {
-    return patients.find(p => p.id === id)?.phone || '';
-  };
+  const totalMonthApps = currentMonthApps.length;
+  const onlinePercentage = totalMonthApps > 0 ? Math.round((currentOnlineCount / totalMonthApps) * 100) : 0;
+  const presencialPercentage = totalMonthApps > 0 ? Math.round((currentPresencialCount / totalMonthApps) * 100) : 0;
 
   return (
-    <div className="space-y-8 font-sans">
-      {/* Title block */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 border-b border-slate-200 pb-4 md:pb-6 mb-4 md:mb-6">
+    <div className="space-y-6 font-sans pb-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Bem-vinda de volta! Aqui está o resumo do seu dia.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Central</h1>
+          <p className="text-sm text-slate-500 mt-1">Resumo das suas métricas e atendimentos de hoje.</p>
         </div>
-        <div className="flex items-center space-x-2 md:space-x-3">
-          <button className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm text-slate-700 cursor-pointer">
-            Ver Relatórios
-          </button>
-          <button 
-            onClick={() => setShowSessaoForm(true)}
-            className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-lg bg-[#C1E2A4] text-slate-900 hover:bg-[#b0d292] transition-colors shadow-sm cursor-pointer border border-[#b0d292]"
-          >
-            Nova Sessão
+        <div className="flex items-center space-x-3">
+          <button className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors flex items-center shadow-sm">
+            <span className="hidden sm:inline mr-2">Filtro Rápido:</span> Mensal
+            <TrendingDown className="w-4 h-4 ml-2" />
           </button>
         </div>
       </div>
 
-      {showSessaoForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-bg-primary rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
-              <h3 className="font-bold text-lg text-slate-900 flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-emerald-500" />
-                <span>Nova Sessão / Agendamento</span>
-              </h3>
-              <button 
-                onClick={() => setShowSessaoForm(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-              >
-                ×
-              </button>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1 */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pacientes Ativos</span>
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+              <Users className="w-4 h-4" />
             </div>
-            
-            <form onSubmit={handleCreateSessao} className="p-6 bg-white space-y-4">
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-slate-900 mb-1">{activePatientsCount}</div>
+            <div className="flex items-center text-xs font-medium">
+              <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center mr-2">
+                <TrendingUp className="w-3 h-3 mr-1" /> +12%
+              </span>
+              <span className="text-slate-400">vs. mês passado</span>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 2 */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sessões Hoje</span>
+            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-slate-900 mb-1">{appointmentsToday.length}</div>
+            <div className="flex items-center text-xs font-medium">
+              <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center mr-2">
+                <TrendingUp className="w-3 h-3 mr-1" /> +2
+              </span>
+              <span className="text-slate-400">vs. ontem</span>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 3 */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Faturamento (Mês)</span>
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <DollarSign className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-slate-900 mb-1 leading-none tracking-tight">
+              <span className="text-lg opacity-50 font-medium mr-1 tracking-normal">R$</span>
+              {monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="flex items-center text-xs font-medium mt-1">
+              <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center mr-2">
+                <TrendingUp className="w-3 h-3 mr-1" /> +5%
+              </span>
+              <span className="text-slate-400">vs. mês passado</span>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 4 */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">A Receber</span>
+            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+              <Activity className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-slate-900 mb-1 leading-none tracking-tight">
+              <span className="text-lg opacity-50 font-medium mr-1 tracking-normal">R$</span>
+              {pendingRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="flex items-center text-xs font-medium mt-1">
+               <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded flex items-center mr-2">
+                <TrendingDown className="w-3 h-3 mr-1" /> -2%
+              </span>
+              <span className="text-slate-400">vs. mês passado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Charts */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Revenue Chart */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Paciente</label>
-                <select
-                  required
-                  value={selectedSessaoPatientId}
-                  onChange={(e) => setSelectedSessaoPatientId(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#C1E2A4] focus:ring-2 focus:ring-[#C1E2A4]/20"
-                >
-                  <option value="">Selecione um Paciente</option>
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                <h2 className="text-lg font-bold text-slate-900">Evolução de Receita</h2>
+                <p className="text-sm text-slate-500">Fluxo de caixa dos últimos 6 meses</p>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Data</label>
-                  <input
-                    type="date"
-                    required
-                    value={sessaoDate}
-                    onChange={(e) => setSessaoDate(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#C1E2A4] focus:ring-2 focus:ring-[#C1E2A4]/20"
+            </div>
+            <div className="flex-1 min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                  <Tooltip 
+                    cursor={{ fill: 'transparent' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Receita Realizada']}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Horário</label>
-                  <input
-                    type="time"
-                    required
-                    value={sessaoTime}
-                    onChange={(e) => setSessaoTime(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#C1E2A4] focus:ring-2 focus:ring-[#C1E2A4]/20"
-                  />
-                </div>
-              </div>
+                  <Bar dataKey="value" radius={[6, 6, 6, 6]} barSize={40}>
+                    {revenueData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              {revenueData.every(r => r.value === 0) && (
+                <div className="text-center text-slate-400 text-sm mt-4">Nenhuma receita registrada neste período. Adicione registros no Módulo Financeiro.</div>
+              )}
+            </div>
+          </div>
 
-              <div className="pt-4 flex items-center space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowSessaoForm(false)}
-                  className="flex-1 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 text-sm font-semibold text-slate-900 bg-[#C1E2A4] hover:bg-[#b0d292] rounded-lg transition-colors border border-[#b0d292] cursor-pointer"
-                >
-                  Agendar Sessão
-                </button>
+          {/* Sessions Chart */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Sessões Realizadas / Marcadas</h2>
+                <p className="text-sm text-slate-500">Histórico de agendamentos por modalidade</p>
               </div>
-            </form>
+            </div>
+            <div className="flex-1 min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sessionsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} allowDecimals={false} />
+                  <Tooltip 
+                    cursor={{ fill: 'transparent' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="Online" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} barSize={40} />
+                  <Bar dataKey="Presencial" stackId="a" fill="#f97316" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+              {sessionsData.every(s => s.Online === 0 && s.Presencial === 0) && (
+                <div className="text-center text-slate-400 text-sm mt-4">Nenhuma sessão registrada. Adicione pacientes na Agenda.</div>
+              )}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Central de Alertas */}
-      <div className="border border-red-500 rounded-2xl bg-white overflow-hidden shadow-sm flex flex-col mb-8 p-6 text-center">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-red-100 border border-red-200 flex items-center justify-center shadow-sm">
-            <AlertCircle className="h-8 w-8 text-red-600" />
+        {/* Right Column: Alerts First, then Breakdown */}
+        <div className="space-y-6">
+          {/* Central de Alertas Summary */}
+          <div className={`p-6 rounded-2xl border shadow-sm ${crisisAlerts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+             <div className="flex items-center space-x-3 mb-3">
+               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${crisisAlerts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                 <AlertCircle className="w-5 h-5" />
+               </div>
+               <div>
+                  <h3 className={`font-bold ${crisisAlerts.length > 0 ? 'text-red-900' : 'text-emerald-900'}`}>Alertas Clínicos</h3>
+                  <p className={`text-sm ${crisisAlerts.length > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                    {crisisAlerts.length} casos de atenção
+                  </p>
+               </div>
+             </div>
+             {crisisAlerts.length > 0 ? (
+               <button 
+                 onClick={() => onNavigate('alertas')}
+                 className="w-full py-2.5 mt-2 text-sm font-semibold bg-white text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition flex items-center justify-center space-x-2 shadow-sm"
+               >
+                 <span>Ver Detalhes</span>
+                 <ArrowRight className="w-4 h-4" />
+               </button>
+             ) : (
+                <div className="text-xs text-emerald-600 mt-2 font-medium">Todos os pacientes estão estáveis.</div>
+             )}
           </div>
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight">Central de Alertas Clínicos</h2>
-            <p className="text-sm md:text-base text-slate-600 mt-2 max-w-lg mx-auto">
-              Você possui <span className="font-bold text-red-600">{crisisAlerts.length} alertas</span> de risco pendentes. Por favor, revise as ocorrências ou entre em contato com os pacientes imediatamente.
-            </p>
+
+          {/* Active Customers Summary / Modalities */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h2 className="text-lg font-bold text-slate-900">Modalidade de Sessões</h2>
+            <p className="text-sm text-slate-500 mb-6">Comparativo das {totalMonthApps} sessões este mês</p>
+
+            <div className="space-y-6">
+              {/* Desktop / Online */}
+              <div>
+                <div className="flex justify-between items-end mb-2">
+                  <div className="flex items-center">
+                    <Laptop className="w-4 h-4 text-emerald-500 mr-2" />
+                    <span className="text-sm font-semibold text-slate-700">Online</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-slate-900 mr-2">{onlinePercentage}%</span>
+                    <span className="text-xs text-slate-500 font-medium">({currentOnlineCount})</span>
+                  </div>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${onlinePercentage}%` }}></div>
+                </div>
+              </div>
+
+              {/* Presencial */}
+              <div>
+                <div className="flex justify-between items-end mb-2">
+                  <div className="flex items-center">
+                    <Users className="w-4 h-4 text-orange-500 mr-2" />
+                    <span className="text-sm font-semibold text-slate-700">Presencial</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-slate-900 mr-2">{presencialPercentage}%</span>
+                    <span className="text-xs text-slate-500 font-medium">({currentPresencialCount})</span>
+                  </div>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${presencialPercentage}%` }}></div>
+                </div>
+              </div>
+            </div>
+            {totalMonthApps === 0 && (
+                <p className="text-xs text-slate-400 mt-4 text-center">Sem dados suficientes neste mês.</p>
+            )}
           </div>
-          <button 
-             onClick={() => onNavigate('alertas')}
-             className="mt-2 text-sm md:text-base font-semibold bg-red-500 text-white hover:bg-red-600 px-6 py-3 rounded-xl flex items-center space-x-2 transition-colors cursor-pointer shadow-sm"
-          >
-            <span>Ver todos os alertas</span>
-            <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-          </button>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        
-        {/* KPI 1: Monthly billing */}
-        <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between min-h-[120px] md:min-h-[140px]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-emerald-600" />
-            </div>
-            <ArrowRight className="h-3 w-3 md:h-4 md:w-4 text-emerald-500 -rotate-45" />
-          </div>
-          <div>
-            <span className="text-[10px] md:text-sm text-slate-500 block mb-0.5 md:mb-1">Faturamento</span>
-            <span className="text-lg md:text-2xl font-bold text-slate-900 block truncate">R$ {monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-          </div>
+      {/* Bottom Table: Recent Appointments */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-slate-900">Agenda Recente</h2>
+          <button 
+           onClick={() => onNavigate('agenda')}
+           className="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition"
+          >
+            Acessar Agenda Completa
+          </button>
         </div>
-
-        {/* KPI 2: Active patients */}
-        <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between min-h-[120px] md:min-h-[140px]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-50 flex items-center justify-center">
-              <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-500" />
-            </div>
-            <ArrowRight className="h-3 w-3 md:h-4 md:w-4 text-blue-500 -rotate-45" />
-          </div>
-          <div>
-            <span className="text-[10px] md:text-sm text-slate-500 block mb-0.5 md:mb-1">Pacientes</span>
-            <span className="text-lg md:text-2xl font-bold text-slate-900 block">{activePatientsCount}</span>
-          </div>
-        </div>
-
-        {/* KPI 3: Appointments today */}
-        <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between min-h-[120px] md:min-h-[140px]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-orange-50 flex items-center justify-center">
-              <Calendar className="h-4 w-4 md:h-5 md:w-5 text-orange-500" />
-            </div>
-          </div>
-          <div>
-            <span className="text-[10px] md:text-sm text-slate-500 block mb-0.5 md:mb-1">Sessões Hoje</span>
-            <span className="text-lg md:text-2xl font-bold text-slate-900 block">{appointmentsToday.length}</span>
-          </div>
-        </div>
-        
-        {/* KPI 4: Active Alerts */}
-        <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between min-h-[120px] md:min-h-[140px]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-pink-50 flex items-center justify-center">
-              <Heart className="h-4 w-4 md:h-5 md:w-5 text-pink-500" />
-            </div>
-          </div>
-          <div>
-            <span className="text-[10px] md:text-sm text-slate-500 block mb-0.5 md:mb-1">Alertas Ativos</span>
-            <span className="text-lg md:text-2xl font-bold text-slate-900 block">{crisisAlerts.length}</span>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+              <tr>
+                <th className="px-6 py-4 rounded-tl-xl">Sessão ID</th>
+                <th className="px-6 py-4">Paciente</th>
+                <th className="px-6 py-4">Data / Hora</th>
+                <th className="px-6 py-4">Modalidade</th>
+                <th className="px-6 py-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {appointments.slice(0, 5).map(app => (
+                <tr key={app.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 font-mono text-xs text-slate-400">#{app.id.substring(0, 6)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-xs">
+                        {getPatientName(app.patient_id).charAt(0)}
+                      </div>
+                      <span className="font-medium text-slate-900">{getPatientName(app.patient_id)}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center text-slate-700">
+                      <Calendar className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                      {app.date.split('-').reverse().join('/')}
+                      <Clock className="w-3.5 h-3.5 ml-3 mr-1.5 text-slate-400" />
+                      {app.start_time}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded bg-slate-100 text-slate-700">
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${app.type === 'online' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
+                      {app.type === 'online' ? 'Online' : 'Presencial'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                     <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md ${
+                        app.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                        app.status === 'confirmed' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                        'bg-slate-50 text-slate-700 border border-slate-200'
+                      }`}>
+                        {app.status === 'completed' ? 'Concluída' : app.status === 'confirmed' ? 'Confirmada' : app.status}
+                      </span>
+                  </td>
+                </tr>
+              ))}
+              {appointments.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">Nenhuma sessão recente encontrada.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 }
+

@@ -17,6 +17,8 @@ export interface Doctor {
   cpf?: string;
   phone?: string;
   specialty: string;
+  admin_id?: string;
+  role?: 'admin' | 'doctor';
   plan_type?: 'free' | 'premium' | 'pro';
   clinic_name?: string;
   clinic_address?: string;
@@ -37,7 +39,9 @@ export interface Doctor {
     end: string;
     days: string;
   };
+  consultation_price?: number;
   created_at?: string;
+  photo_url?: string;
 }
 
 export interface Patient {
@@ -51,6 +55,7 @@ export interface Patient {
   status: 'active' | 'inactive' | 'archived';
   created_at: string;
   tags?: string[];
+  photo_url?: string;
 }
 
 export interface Appointment {
@@ -63,6 +68,10 @@ export interface Appointment {
   type: 'online' | 'presencial';
   room?: string; // e.g. "Sala 1", "Sala 2"
   status: 'pending' | 'confirmed' | 'completed' | 'canceled';
+  is_return?: boolean;
+  price?: number;
+  billing_id?: string;
+  google_event_id?: string;
 }
 
 export interface Billing {
@@ -73,8 +82,10 @@ export interface Billing {
   due_date: string;
   status: 'paid' | 'pending' | 'canceled';
   nfe_status: 'not_issued' | 'issued' | 'failed' | 'processing';
+  payment_method?: 'pix' | 'cartao' | 'dinheiro';
   created_at: string;
   auto_emit_nfe: boolean;
+  appointment_id?: string;
 }
 
 export interface DiaryEntry {
@@ -136,10 +147,31 @@ function save<T>(key: string, value: T): void {
 }
 
 // Helper for Firestore
+function cleanForFirestore(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    // Prevent Firestore 1MB document limit errors for large base64 images
+    if (typeof obj === 'string' && obj.length > 900000) {
+      return null;
+    }
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(cleanForFirestore).filter(v => v !== undefined);
+  }
+  const newObj: any = {};
+  for (const key of Object.keys(obj)) {
+    if (obj[key] !== undefined) {
+      newObj[key] = cleanForFirestore(obj[key]);
+    }
+  }
+  return newObj;
+}
+
 async function persistToFirestore(collectionName: string, id: string, docData: any) {
   try {
     if (auth.currentUser) {
-      await setDoc(doc(db, collectionName, id), docData, { merge: true });
+      const cleanData = cleanForFirestore(docData);
+      await setDoc(doc(db, collectionName, id), cleanData, { merge: true });
     }
   } catch (err) {
     console.error('Failed to sync to Firestore: ', err);
@@ -155,6 +187,30 @@ async function removeFirestoreDoc(collectionName: string, id: string) {
     console.error('Failed to delete from Firestore: ', err);
   }
 }
+
+export const compressImage = (base64Str: string, maxWidth = 800, maxHeight = 800): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxWidth) {
+        height *= maxWidth / width;
+        width = maxWidth;
+      } else if (height > maxHeight) {
+        width *= maxHeight / height;
+        height = maxHeight;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => resolve(base64Str); // Fallback
+  });
+};
 
 export const dataManager = {
   getDoctors: (): Doctor[] => getOrInit('cm_doctors', INITIAL_DOCTORS),
@@ -174,6 +230,12 @@ export const dataManager = {
     if(idx >= 0) { docs[idx] = doc; } else { docs.push(doc); }
     dataManager.saveDoctors(docs);
     persistToFirestore('doctors', doc.id, doc);
+  },
+  deleteDoctor: (id: string) => {
+    const docs = dataManager.getDoctors();
+    const filteredDocs = docs.filter(d => d.id !== id);
+    dataManager.saveDoctors(filteredDocs);
+    removeFirestoreDoc('doctors', id);
   },
 
   getPatients: (): Patient[] => {
@@ -210,6 +272,13 @@ export const dataManager = {
     return newPat;
   },
 
+  deletePatient: (id: string) => {
+    const list = dataManager.getPatients();
+    const filteredList = list.filter(p => p.id !== id);
+    dataManager.savePatients(filteredList);
+    removeFirestoreDoc('patients', id);
+  },
+
   getAppointments: (): Appointment[] => {
     const docId = dataManager.getDoctor().id;
     return getOrInit<Appointment[]>('cm_appointments', INITIAL_APPOINTMENTS).filter(a => a.doctor_id === docId);
@@ -240,6 +309,12 @@ export const dataManager = {
     dataManager.saveAppointments(list);
     persistToFirestore('appointments', id, list[idx]);
     return list[idx];
+  },
+  deleteAppointment: (id: string) => {
+    let list = dataManager.getAppointments();
+    list = list.filter(app => app.id !== id);
+    dataManager.saveAppointments(list);
+    removeFirestoreDoc('appointments', id);
   },
 
   getBilling: (): Billing[] => {
@@ -405,12 +480,21 @@ export const dataManager = {
       dataManager.saveMedicalRecords(medical.docs.map(d => d.data() as MedicalRecord));
       dataManager.saveDiaryEntries(diaries);
 
-      // We should also pull the doctor doc itself
+      // We should also pull the doctor doc itself and any created doctors
+      let pulledDoctors: Doctor[] = [];
       const docSnap = await getDoc(doc(db, 'doctors', doctorId));
       if (docSnap.exists()) {
         const docInfo = docSnap.data() as Doctor;
-        dataManager.saveDoctor(docInfo);
+        pulledDoctors.push(docInfo);
       }
+      
+      const adminDocsSnap = await getDocs(query(collection(db, 'doctors'), where('admin_id', '==', doctorId)));
+      adminDocsSnap.docs.forEach(d => {
+        const docData = d.data() as Doctor;
+        if (docData.id !== doctorId) pulledDoctors.push(docData);
+      });
+      
+      dataManager.saveDoctors(pulledDoctors);
     } catch (error) {
       console.warn("Error pulling from Firestore:", error);
     }

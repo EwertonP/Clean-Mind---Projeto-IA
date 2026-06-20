@@ -45,10 +45,11 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         // Se autenticou no firebase mas não tem na lista local
         currentDoc = {
           id: user.uid,
-          name: user.displayName || 'Médico',
+          name: user.displayName || 'Administrador',
           email: user.email || '',
           crp_crm: '',
           specialty: '',
+          role: 'admin',
           is_configured: false,
           created_at: new Date().toISOString()
         };
@@ -83,6 +84,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         phone: regPhone,
         crp_crm: '',
         specialty: '',
+        role: 'admin',
         is_configured: false,
         created_at: new Date().toISOString()
       };
@@ -124,10 +126,11 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       if (!doc) {
         doc = {
           id: user.uid,
-          name: user.displayName || 'Médico',
+          name: user.displayName || 'Administrador',
           email: user.email || '',
           crp_crm: '',
           specialty: '',
+          role: 'admin',
           is_configured: false,
           created_at: new Date().toISOString()
         };
