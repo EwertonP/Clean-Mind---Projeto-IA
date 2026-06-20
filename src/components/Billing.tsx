@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Clock, Plus, Receipt, Landmark, Sparkles, Check, CheckCircle2, ChevronRight, BarChart3, Search, Filter } from 'lucide-react';
+import { DollarSign, Clock, Plus, Receipt, Landmark, Sparkles, Check, CheckCircle2, ChevronRight, BarChart3, Search, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Billing as BillingType, Patient, dataManager } from '../data';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
+import { useStore } from '../store';
+
 interface BillingProps {
-  onRefreshDashboard: () => void;
-  triggerRefresh: number;
   initialDraft?: { patientId: string; amount: string; dueDate: string } | null;
   onClearDraft?: () => void;
 }
 
-export default function Billing({ onRefreshDashboard, triggerRefresh, initialDraft, onClearDraft }: BillingProps) {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [billingList, setBillingList] = useState<BillingType[]>([]);
+export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
+  const patientsStore = useStore(state => state.patients);
+  const billingStore = useStore(state => state.billing);
+  
+  const patients = patientsStore;
+  const billingList = billingStore;
   
   // New billing form states
   const [showForm, setShowForm] = useState(false);
@@ -60,12 +63,10 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
   }, [initialDraft]);
 
   useEffect(() => {
-    setPatients(dataManager.getPatients());
-    setBillingList(dataManager.getBilling());
-    if (!initialDraft && selectedPatientId === '' && dataManager.getPatients().length > 0) {
-      setSelectedPatientId(dataManager.getPatients()[0].id);
+    if (!initialDraft && selectedPatientId === '' && patients.length > 0) {
+      setSelectedPatientId(patients[0].id);
     }
-  }, [triggerRefresh]);
+  }, [patients]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,11 +82,8 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
       auto_emit_nfe: autoEmitNfe
     });
 
-    // Reload list
-    setBillingList(dataManager.getBilling());
     setShowForm(false);
     if (onClearDraft) onClearDraft();
-    onRefreshDashboard();
 
     setToastMessage('Fatura criada. Aguardando pagamento.');
 
@@ -95,7 +93,7 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
   };
 
   const handleSimulatePayment = (billId: string) => {
-    const list = dataManager.getBilling();
+    const list = billingStore;
     const index = list.findIndex(b => b.id === billId);
     if (index !== -1) {
       const updates: Partial<any> = { status: 'paid' };
@@ -105,8 +103,6 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
       }
       
       dataManager.updateBilling(billId, updates);
-      setBillingList(dataManager.getBilling());
-      onRefreshDashboard();
 
       setToastMessage('Pagamento confirmado');
       setTimeout(() => {
@@ -136,7 +132,13 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
   });
 
   return (
-    <div className="space-y-8 font-sans">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-8 font-sans"
+    >
       
       <AnimatePresence>
         {toastMessage && (
@@ -154,25 +156,26 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
       </AnimatePresence>
 
       {/* Title */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Financeiro</h1>
-          <p className="text-sm text-slate-500 mt-1 max-w-lg">
+          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Financeiro</h1>
+          <p className="text-[15px] font-medium text-slate-500 mt-1 max-w-lg">
             Faturamento automatizado, conciliação Pix síncrona e emissão automatizada de notas fiscais de serviço (NFS-e).
           </p>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(!showForm);
-            if (!selectedPatientId && patients.length > 0) {
-              setSelectedPatientId(patients[0].id);
-            }
-          }}
-          className="w-full md:w-auto bg-[#C1E2A4] text-slate-900 text-sm border border-[#b0d292] font-semibold px-6 py-2.5 rounded-lg hover:bg-[#b0d292] transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm shrink-0"
-        >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span>Gerar Nova Fatura</span>
-        </button>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => {
+              setShowForm(!showForm);
+              if (!selectedPatientId && patients.length > 0) {
+                setSelectedPatientId(patients[0].id);
+              }
+            }}
+            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
+          >
+            <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Gerar Nova Fatura
+          </button>
+        </div>
       </div>
 
       {/* KPIs & Chart Layout */}
@@ -252,25 +255,40 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
       </div>
 
       {/* Modal / Overlay Form */}
+      <AnimatePresence>
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-screen">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-slate-900">
-                <DollarSign className="h-5 w-5 text-emerald-500" />
-                <h3 className="font-bold text-lg">Registrar Nova Cobrança de Paciente</h3>
+        <div className="fixed inset-0 z-50">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setShowForm(false)}
+          ></motion.div>
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl flex flex-col z-10 border-l border-slate-200"
+          >
+            <form onSubmit={handleSubmit} className="bg-white w-full h-full flex flex-col">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-2 text-slate-900">
+                  <DollarSign className="h-5 w-5 text-emerald-500" />
+                  <h3 className="font-bold text-lg">Registrar Nova Cobrança de Paciente</h3>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setShowForm(false)}
+                  className="text-slate-400 hover:text-slate-600 p-2 -mr-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setShowForm(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto space-y-6">
+              
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Selecionar Paciente *</label>
@@ -384,8 +402,10 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
               </button>
             </div>
           </form>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
       {/* Invoice Table History */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
@@ -501,6 +521,6 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
         </div>
       </div>
 
-    </div>
+    </motion.div>
   );
 }

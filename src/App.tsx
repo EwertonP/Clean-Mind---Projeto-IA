@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Doctor, dataManager } from './data';
+import { useStore } from './store';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import Agenda from './components/Agenda';
@@ -38,15 +39,22 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedPatientParam, setSelectedPatientParam] = useState<string | undefined>(undefined);
   const [billingDraftParam, setBillingDraftParam] = useState<any>(null);
+
+  useEffect(() => {
+    if (doctor?.id) {
+       const unsub = useStore.getState().initSync(doctor.id);
+       return () => unsub();
+    }
+  }, [doctor?.id]);
   const [openNewAppointmentParam, setOpenNewAppointmentParam] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [globalToastMessage, setGlobalToastMessage] = useState('');
   
-  // Dynamic counter to force refresh of localStorage states across tabs
-  const [triggerCount, setTriggerCount] = useState<number>(0);
   const [hasAlerts, setHasAlerts] = useState(false);
   const prevAlertCount = useRef<number>(0);
+  
+  const diaryEntries = useStore((state) => state.diary);
 
   // Load doctor session from local storage on mount
   useEffect(() => {
@@ -56,16 +64,13 @@ export default function App() {
       const doc = doctors.find(d => d.id === sessionId);
       if (doc) {
         setDoctor(doc);
-        dataManager.pullFromFirestore(doc.id).then(() => {
-          setTriggerCount(prev => prev + 1);
-        });
+        dataManager.pullFromFirestore(doc.id);
         if (doc.is_configured === false) {
           setActiveTab('configuracoes');
         }
         return;
       }
     }
-    // If no session, remain null (Auth screen will show)
   }, []);
 
   useEffect(() => {
@@ -75,8 +80,38 @@ export default function App() {
   }, [doctor?.is_configured, activeTab]);
 
   useEffect(() => {
+    if (!doctor) return;
+
+    let timeoutId: number;
+
+    const handleLogoutTimeout = () => {
+      localStorage.removeItem('cm_doctor_session');
+      setDoctor(null);
+      setActiveTab('dashboard');
+      alert('Sua sessão expirou por inatividade (Regra de Segurança e Privacidade). Você foi desconectado automaticamente.');
+    };
+
+    const resetTimeout = () => {
+      window.clearTimeout(timeoutId);
+      // 3 hours = 3 * 60 * 60 * 1000
+      timeoutId = window.setTimeout(handleLogoutTimeout, 3 * 60 * 60 * 1000);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(e => document.addEventListener(e, resetTimeout));
+
+    // Initialize timer
+    resetTimeout();
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      events.forEach(e => document.removeEventListener(e, resetTimeout));
+    };
+  }, [doctor]);
+
+  useEffect(() => {
     // Check for crisis alerts
-    const activeAlerts = dataManager.getDiaryEntries().filter(e => e.crisis_flag);
+    const activeAlerts = diaryEntries.filter(e => e.crisis_flag);
     setHasAlerts(activeAlerts.length > 0);
     
     // Only show popup if new alerts appeared (count increased)
@@ -95,10 +130,10 @@ export default function App() {
         setDoctor(doc);
       }
     }
-  }, [triggerCount]);
+  }, [diaryEntries]);
 
   const handleRefreshAll = () => {
-    setTriggerCount(prev => prev + 1);
+    // Left empty since Zustand triggers re-renders automatically
   };
 
   const handleNavigateWithParams = (tab: string, patientId?: string, draft?: any) => {
@@ -164,7 +199,7 @@ export default function App() {
             </div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <Settings onRefreshDashboard={handleRefreshAll} />
+            <Settings />
           </div>
         </div>
       </div>
@@ -377,15 +412,11 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 min-h-screen md:ml-[260px] bg-slate-50 w-full relative">
         
         {/* Header navigation controller */}
-        <header className={`sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 shrink-0 transition-all ${
-          activeTab === 'dashboard' 
-            ? 'h-16 md:h-8 bg-transparent border-none' 
-            : 'h-16 md:h-20 border-b border-slate-200 bg-white/80 backdrop-blur-md'
-        }`}>
+        <header className="sticky top-0 z-10 flex items-center justify-between py-4 px-4 sm:px-8 shrink-0 transition-all h-16 md:h-[72px] bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-sm md:bg-transparent md:border-none md:shadow-none md:backdrop-blur-none" style={{ marginTop: '0px' }}>
           
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4 w-full">
             {/* Small screen menu triggers */}
-            <div className="md:hidden flex items-center mt-4">
+            <div className="md:hidden flex items-center">
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="p-1.5 -ml-1.5 mr-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
@@ -399,6 +430,25 @@ export default function App() {
               }} />
               <span id="logo-fallback-mobile" className="hidden font-serif font-bold text-lg text-slate-900">cleanmind.</span>
             </div>
+
+            {/* Global Search */}
+            <div className="hidden md:flex ml-auto flex-1 max-w-md items-center relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <input 
+                type="text" 
+                placeholder="Busca global (pacientes, prontuários)..." 
+                className="pl-9 pr-4 py-2 w-full text-sm outline-none border border-slate-200 rounded-full focus:ring-2 focus:ring-[#C1E2A4]/50 focus:border-[#C1E2A4] transition-all bg-white"
+                onChange={(e) => {
+                  if (activeTab !== 'paciente' && e.target.value.length > 2) {
+                     handleNavigateWithParams('paciente');
+                  }
+                }}
+              />
+            </div>
           </div>
 
         </header>
@@ -408,52 +458,40 @@ export default function App() {
           {activeTab === 'dashboard' && (
             <Dashboard 
               onNavigate={handleNavigateWithParams} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'agenda' && (
             <Agenda 
               onNavigate={handleNavigateWithParams}
               initialOpenNewModal={openNewAppointmentParam}
-              onRefreshDashboard={handleRefreshAll} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'prontuario' && (
             <MedicalRecordEditor 
               initialPatientId={selectedPatientParam} 
-              onRefreshDashboard={handleRefreshAll} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'financeiro' && (
             <Billing 
               initialDraft={billingDraftParam}
               onClearDraft={() => setBillingDraftParam(null)}
-              onRefreshDashboard={handleRefreshAll} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'paciente' && (
             <PatientDiaryApp 
-              onRefreshDashboard={handleRefreshAll} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'medicos' && (
             <Doctors 
-              onRefreshDashboard={handleRefreshAll} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'alertas' && (
             <AlertCenter 
               onNavigate={handleNavigateWithParams} 
-              triggerRefresh={triggerCount} 
             />
           )}
           {activeTab === 'configuracoes' && (
-            <Settings onRefreshDashboard={handleRefreshAll} />
+            <Settings />
           )}
         </main>
 

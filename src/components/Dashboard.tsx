@@ -2,26 +2,20 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, Calendar, DollarSign, Users, ArrowRight, TrendingUp, TrendingDown, Clock, Laptop, Activity } from 'lucide-react';
 import { Appointment, Patient, Billing, DiaryEntry, dataManager } from '../data';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { motion } from 'motion/react';
+import { useStore } from '../store';
 
 interface DashboardProps {
-  onNavigate: (tab: string, param?: string) => void;
-  triggerRefresh: number;
+  onNavigate: (tab: string, param?: string, extraParam?: string | boolean | any) => void;
 }
 
-export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps) {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [billing, setBilling] = useState<Billing[]>([]);
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
+export default function Dashboard({ onNavigate }: DashboardProps) {
+  const isLoading = useStore(state => state.isLoading);
+  const patients = useStore(state => state.patients);
+  const appointments = useStore(state => state.appointments);
+  const billing = useStore(state => state.billing);
+  const diaryEntries = useStore(state => state.diary);
   
-  // Load state values
-  useEffect(() => {
-    setPatients(dataManager.getPatients());
-    setAppointments(dataManager.getAppointments());
-    setBilling(dataManager.getBilling());
-    setDiaryEntries(dataManager.getDiaryEntries());
-  }, [triggerRefresh]);
-
   // Calculations for KPIs
   // Using fixed date matching the app's current context
   const todayStr = '2026-06-09';
@@ -100,7 +94,13 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
   const presencialPercentage = totalMonthApps > 0 ? Math.round((currentPresencialCount / totalMonthApps) * 100) : 0;
 
   return (
-    <div className="space-y-6 font-sans pb-8 max-w-[1200px] mx-auto text-slate-800">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6 font-sans pb-8 max-w-[1200px] mx-auto text-slate-800"
+    >
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
@@ -121,7 +121,11 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Card 1: Total Pacientes Ativos */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <motion.div 
+          whileHover={{ scale: 1.01 }}
+          transition={{ duration: 0.2 }}
+          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between cursor-default"
+        >
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-2">
               <Users className="w-5 h-5 text-slate-600" />
@@ -134,7 +138,11 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
           
           <div className="flex items-end justify-between mb-8">
             <div className="text-[40px] font-extrabold text-slate-900 leading-none">
-              {activePatientsCount} <span className="text-xl font-bold text-slate-500 tracking-tight">Pacientes</span>
+              {isLoading ? (
+                <div className="h-10 w-24 bg-slate-200 animate-pulse rounded-md inline-block"></div>
+              ) : (
+                <>{activePatientsCount} <span className="text-xl font-bold text-slate-500 tracking-tight">Pacientes</span></>
+              )}
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs font-semibold text-slate-400 mb-1">Mês anterior <span className="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded ml-1 font-bold">↗ 12.3%</span></span>
@@ -161,10 +169,14 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
               <span>Alta Médica (15%)</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 2: Sessões no Mês */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          transition={{ duration: 0.2 }}
+          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-slate-600" />
@@ -209,7 +221,7 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
       </div>
 
@@ -246,38 +258,42 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
             </div>
 
             <div className="w-full h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                  <Tooltip 
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-white p-3 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 flex flex-col space-y-2 min-w-[180px]">
-                            <p className="font-bold text-black border-b border-slate-100 pb-2 mb-1">{label}</p>
-                            {[...payload].reverse().map((entry: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                                  <span className="text-black font-bold capitalize">{entry.name}</span>
+              {isLoading ? (
+                <div className="w-full h-full bg-slate-100 animate-pulse rounded-xl"></div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white p-3 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 flex flex-col space-y-2 min-w-[180px]">
+                              <p className="font-bold text-black border-b border-slate-100 pb-2 mb-1">{label}</p>
+                              {[...payload].reverse().map((entry: any, index: number) => (
+                                <div key={index} className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                    <span className="text-black font-bold capitalize">{entry.name}</span>
+                                  </div>
+                                  <span className="text-black font-bold ml-4">R$ {entry.value.toLocaleString('pt-BR')}</span>
                                 </div>
-                                <span className="text-black font-bold ml-4">R$ {entry.value.toLocaleString('pt-BR')}</span>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                    cursor={{ fill: '#f8fafc' }}
-                  />
-                  <Bar dataKey="Despesas" fill="#A3B1A6" stackId="a" />
-                  <Bar dataKey="Economia" fill="#192F28" stackId="a" />
-                  <Bar dataKey="Receita" fill="#C1E2A4" stackId="a" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                      cursor={{ fill: '#f8fafc' }}
+                    />
+                    <Bar dataKey="Despesas" fill="#A3B1A6" stackId="a" />
+                    <Bar dataKey="Economia" fill="#192F28" stackId="a" />
+                    <Bar dataKey="Receita" fill="#C1E2A4" stackId="a" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -290,21 +306,27 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
               </div>
             </div>
             <div className="flex-1 min-h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sessionsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} allowDecimals={false} />
-                  <Tooltip 
-                    cursor={{ fill: 'transparent' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="Online" stackId="a" fill="#C1E2A4" radius={[0, 0, 4, 4]} barSize={40} />
-                  <Bar dataKey="Presencial" stackId="a" fill="#192F28" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-              {sessionsData.every(s => s.Online === 0 && s.Presencial === 0) && (
-                <div className="text-center text-slate-400 text-sm mt-4">Nenhuma sessão registrada. Adicione pacientes na Agenda.</div>
+              {isLoading ? (
+                <div className="w-full h-full bg-slate-100 animate-pulse rounded-xl"></div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sessionsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} allowDecimals={false} />
+                      <Tooltip 
+                        cursor={{ fill: 'transparent' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="Online" stackId="a" fill="#C1E2A4" radius={[0, 0, 4, 4]} barSize={40} />
+                      <Bar dataKey="Presencial" stackId="a" fill="#192F28" radius={[4, 4, 0, 0]} barSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {sessionsData.every(s => s.Online === 0 && s.Presencial === 0) && (
+                    <div className="text-center text-slate-400 text-sm mt-4">Nenhuma sessão registrada. Adicione pacientes na Agenda.</div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -453,7 +475,7 @@ export default function Dashboard({ onNavigate, triggerRefresh }: DashboardProps
           </table>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

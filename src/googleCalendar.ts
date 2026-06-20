@@ -32,9 +32,59 @@ export const getGoogleAccessToken = () => cachedAccessToken;
 
 export const isGoogleCalendarConnected = () => !!cachedAccessToken;
 
-export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, patientName: string, doctorName: string, room?: string): Promise<string | undefined> => {
-  if (!cachedAccessToken) {
-    console.warn("Google Calendar not connected");
+export const checkGoogleCalendarAvailability = async (
+  startTime: Date,
+  endTime: Date,
+  doctorToken?: string,
+  excludeEventId?: string
+): Promise<boolean> => {
+  const tokenToUse = doctorToken || cachedAccessToken;
+  if (!tokenToUse) return true; // If not connected, assume available (or we could throw, but let's assume true so we don't break the app)
+
+  try {
+    const timeMin = startTime.toISOString();
+    const timeMax = endTime.toISOString();
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true`;
+    
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${tokenToUse}`,
+      }
+    });
+
+    if (!res.ok) {
+      console.error("Failed to fetch calendar events:", await res.text());
+      return true; // assume available on error so we don't block
+    }
+
+    const data = await res.json();
+    const events = data.items || [];
+    
+    // Check if there's any event overlapping
+    // Google Calendar might return events that exactly border the time limits, 
+    // but timeMin/timeMax are strict (exclusive or inclusive depending on exact matching).
+    // Usually, overlapping means an event exists in this window.
+    const conflictingEvents = events.filter((e: any) => {
+      // Exclude self if updating
+      if (excludeEventId && e.id === excludeEventId) return false;
+      // Also maybe exclude entirely transparent events (like "free" time).
+      if (e.transparency === 'transparent') return false;
+      return true;
+    });
+
+    return conflictingEvents.length === 0;
+  } catch (e) {
+    console.error("Failed to check calendar availability:", e);
+    return true; // assume available on error
+  }
+};
+
+export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, patientName: string, doctorName: string, room?: string, doctorToken?: string): Promise<string | undefined> => {
+  const tokenToUse = doctorToken || cachedAccessToken;
+  
+  if (!tokenToUse) {
+    console.warn("Google Calendar not connected for this doctor");
     return;
   }
   
@@ -64,7 +114,7 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
     const res = await fetch(url, {
       method,
       headers: {
-        'Authorization': `Bearer ${cachedAccessToken}`,
+        'Authorization': `Bearer ${tokenToUse}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(event)
@@ -73,7 +123,7 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
     if (!res.ok) {
       const errText = await res.text();
       console.error("Failed to sync to calendar:", errText);
-      if (res.status === 401) {
+      if (res.status === 401 && !doctorToken) {
         localStorage.removeItem('google_access_token');
         alert("Sua conexão com o Google Calendar expirou. Por favor, autentique novamente nas configurações.");
       }
@@ -87,15 +137,16 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
   }
 };
 
-export const deleteGoogleCalendarEvent = async (eventId: string) => {
-  if (!cachedAccessToken) return;
+export const deleteGoogleCalendarEvent = async (eventId: string, doctorToken?: string) => {
+  const tokenToUse = doctorToken || cachedAccessToken;
+  if (!tokenToUse) return;
   try {
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${cachedAccessToken}` }
+      headers: { 'Authorization': `Bearer ${tokenToUse}` }
     });
     if (!res.ok) {
-      if (res.status === 401) localStorage.removeItem('google_access_token');
+      if (res.status === 401 && !doctorToken) localStorage.removeItem('google_access_token');
       if (res.status === 410) {
         console.log("Calendar event already deleted");
         return;

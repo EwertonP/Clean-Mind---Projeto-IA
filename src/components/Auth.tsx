@@ -35,14 +35,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     try {
       const { user } = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       
-      const doctors = dataManager.getDoctors();
-      const doc = doctors.find(d => d.email === user.email);
+      const { doc, getDoc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const docRef = await getDoc(doc(db, 'doctors', user.uid));
+      let currentDoc = docRef.exists() ? (docRef.data() as Doctor) : null;
 
-      setLoading(false);
-
-      let currentDoc = doc;
       if (!currentDoc) {
-        // Se autenticou no firebase mas não tem na lista local
+        // Se autenticou no firebase mas não tem documento
         currentDoc = {
           id: user.uid,
           name: user.displayName || 'Administrador',
@@ -53,10 +52,10 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           is_configured: false,
           created_at: new Date().toISOString()
         };
-        dataManager.saveDoctor(currentDoc);
+        await setDoc(doc(db, 'doctors', user.uid), currentDoc);
       }
       
-      await dataManager.pullFromFirestore(currentDoc.id);
+      localStorage.setItem('cm_doctor_session', currentDoc.id);
       
       setLoading(false);
       onAuthSuccess(currentDoc);
@@ -76,7 +75,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
 
-      const doctors = dataManager.getDoctors();
       const newDoc: Doctor = {
         id: user.uid,
         name: regName,
@@ -89,9 +87,10 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         created_at: new Date().toISOString()
       };
 
-      dataManager.saveDoctor(newDoc);
-
-      await dataManager.pullFromFirestore(newDoc.id);
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      await setDoc(doc(db, 'doctors', user.uid), newDoc);
+      localStorage.setItem('cm_doctor_session', newDoc.id);
 
       setLoading(false);
       onAuthSuccess(newDoc);
@@ -120,11 +119,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      const doctors = dataManager.getDoctors();
-      let doc = doctors.find(d => d.email === user.email);
+      const { doc, getDoc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const docRef = await getDoc(doc(db, 'doctors', user.uid));
+      let currentDoc = docRef.exists() ? (docRef.data() as Doctor) : null;
 
-      if (!doc) {
-        doc = {
+      if (!currentDoc) {
+        currentDoc = {
           id: user.uid,
           name: user.displayName || 'Administrador',
           email: user.email || '',
@@ -134,12 +135,12 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           is_configured: false,
           created_at: new Date().toISOString()
         };
-        dataManager.saveDoctor(doc);
+        await setDoc(doc(db, 'doctors', user.uid), currentDoc);
       }
+      
+      localStorage.setItem('cm_doctor_session', currentDoc.id);
 
-      await dataManager.pullFromFirestore(doc.id);
-
-      onAuthSuccess(doc);
+      onAuthSuccess(currentDoc);
       setLoading(false);
     } catch (e: any) {
       console.error(e);

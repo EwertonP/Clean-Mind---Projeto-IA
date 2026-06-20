@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { Patient, dataManager, compressImage } from '../data';
 import Markdown from 'react-markdown';
 import jsPDF from 'jspdf';
 import { maskPhone } from '../utils/masks';
+import { useStore } from '../store';
 
 interface PatientDetailModalProps {
   patient: Patient;
@@ -49,47 +51,40 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
     }
   };
 
+  const appointmentsStore = useStore(state => state.appointments);
+  const diaryStore = useStore(state => state.diary);
+  
   const handleSaveProfile = () => {
-    const allPatients = dataManager.getPatients();
-    const updateIndex = allPatients.findIndex(p => p.id === patient.id);
-    if (updateIndex !== -1) {
-      const parsedTags = editProfileForm.tags
-        .split(',')
-        .map(t => t.trim())
-        .filter(t => t.length > 0);
+    const parsedTags = editProfileForm.tags
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
 
-      allPatients[updateIndex] = {
-        ...patient,
-        ...editProfileForm,
-        tags: parsedTags.length > 0 ? parsedTags : undefined
-      };
-      
-      const payload: Partial<Patient> = {
-        name: editProfileForm.name,
-        email: editProfileForm.email,
-        phone: editProfileForm.phone,
-        health_insurance: editProfileForm.health_insurance,
-        medical_history: editProfileForm.medical_history,
-        tags: parsedTags.length > 0 ? parsedTags : undefined,
-        photo_url: editProfileForm.photo_url
-      };
-      dataManager.updatePatient(patient.id, payload);
-      // Update local medical history state to reflect changes if edited here
-      setMedicalHistory(editProfileForm.medical_history);
-      // Force modal to use new data (in a real app, patient context/prop would update)
-      patient.name = editProfileForm.name;
-      patient.email = editProfileForm.email;
-      patient.phone = editProfileForm.phone;
-      patient.health_insurance = editProfileForm.health_insurance;
-      patient.medical_history = editProfileForm.medical_history;
-      patient.tags = parsedTags.length > 0 ? parsedTags : undefined;
-      patient.photo_url = editProfileForm.photo_url;
-    }
+    const payload: Partial<Patient> = {
+      name: editProfileForm.name,
+      email: editProfileForm.email,
+      phone: editProfileForm.phone,
+      health_insurance: editProfileForm.health_insurance,
+      medical_history: editProfileForm.medical_history,
+      tags: parsedTags.length > 0 ? parsedTags : undefined,
+      photo_url: editProfileForm.photo_url
+    };
+    dataManager.updatePatient(patient.id, payload);
+    // Update local medical history state to reflect changes if edited here
+    setMedicalHistory(editProfileForm.medical_history);
+    // Force modal to use new data (in a real app, patient context/prop would update)
+    patient.name = editProfileForm.name;
+    patient.email = editProfileForm.email;
+    patient.phone = editProfileForm.phone;
+    patient.health_insurance = editProfileForm.health_insurance;
+    patient.medical_history = editProfileForm.medical_history;
+    patient.tags = parsedTags.length > 0 ? parsedTags : undefined;
+    patient.photo_url = editProfileForm.photo_url;
     setIsEditingProfile(false);
   };
 
-  const appointments = dataManager.getAppointments().filter(a => a.patient_id === patient.id);
-  const diaryEntries = dataManager.getDiaryEntries().filter(d => d.patient_id === patient.id).reverse();
+  const appointments = appointmentsStore.filter(a => a.patient_id === patient.id);
+  const diaryEntries = diaryStore.filter(d => d.patient_id === patient.id).reverse();
 
   const fakeData = extraData || {
     diag: 'Avaliação',
@@ -102,8 +97,8 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
 
   const handleExportAllRecordsPDF = () => {
     const doc = new jsPDF();
-    const doctor = dataManager.getDoctor();
-    const records = dataManager.getMedicalRecords()
+    const doctor = useStore.getState().doctors[0]; // fallback, preferably passed down but store is accessible
+    const records = useStore.getState().medicalRecords
       .filter(r => r.patient_id === patient.id)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -194,14 +189,28 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden max-h-[95vh] min-h-[600px]">
-        {/* Header Profile Section */}
-        <div className="bg-slate-50 px-8 py-6 border-b border-slate-200 flex flex-col items-start justify-between gap-4 shrink-0 relative">
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-100 rounded-full p-2 transition-colors cursor-pointer border border-slate-200 shadow-sm"
-          >
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+          onClick={onClose}
+        ></motion.div>
+        <motion.div 
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          className="fixed inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl flex flex-col z-10 border-l border-slate-200"
+        >
+          {/* Header Profile Section */}
+          <div className="bg-slate-50 px-8 py-6 border-b border-slate-200 flex flex-col items-start justify-between gap-4 shrink-0 relative">
+            <button 
+              onClick={onClose}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-100 rounded-full p-2 transition-colors cursor-pointer border border-slate-200 shadow-sm"
+            >
             <X className="h-5 w-5" />
           </button>
 
@@ -665,7 +674,8 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
           )}
           </div>
         </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

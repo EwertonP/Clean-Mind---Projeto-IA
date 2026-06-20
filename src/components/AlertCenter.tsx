@@ -2,20 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, Calendar, ArrowLeft, Heart, CheckCircle2 } from 'lucide-react';
 import { DiaryEntry, Patient, dataManager } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
+import { useStore } from '../store';
 
 interface AlertCenterProps {
   onNavigate: (tab: string, param?: string) => void;
-  triggerRefresh: number;
 }
 
-export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterProps) {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
-
-  useEffect(() => {
-    setPatients(dataManager.getPatients());
-    setDiaryEntries(dataManager.getDiaryEntries());
-  }, [triggerRefresh]);
+export default function AlertCenter({ onNavigate }: AlertCenterProps) {
+  const patients = useStore(state => state.patients);
+  const diaryEntries = useStore(state => state.diary);
 
   const getPatientName = (id: string) => {
     return patients.find(p => p.id === id)?.name || 'Paciente Não Identificado';
@@ -28,7 +23,13 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
   const crisisAlerts = diaryEntries.filter(entry => entry.crisis_flag);
 
   return (
-    <div className="space-y-6 font-sans">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6 font-sans"
+    >
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex items-center space-x-3">
           <div>
@@ -65,7 +66,8 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
                 key={alert.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: index * 0.05, duration: 0.2 }}
+                whileHover={{ scale: 1.01 }}
                 className="p-6 flex flex-col md:flex-row md:items-start gap-4 md:space-x-4 hover:bg-slate-50 transition-colors"
               >
                 <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 border border-red-200 shadow-sm">
@@ -95,6 +97,7 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
                       href={`https://wa.me/${getPatientPhone(alert.patient_id).replace(/\D/g,'')}`}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() => dataManager.addAuditLog('Iniciou Acolhimento', `Contato via WhatsApp a partir do alerta: ${alert.id}`, alert.patient_id)}
                       className="bg-[#192F28] hover:bg-[#12221d] text-white text-sm font-semibold py-2 px-5 rounded-lg transition-colors cursor-pointer inline-flex items-center space-x-2"
                     >
                       <Heart className="w-4 h-4" />
@@ -102,7 +105,10 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
                     </a>
                     
                     <button
-                      onClick={() => onNavigate('prontuario', alert.patient_id)}
+                      onClick={() => {
+                        dataManager.addAuditLog('Visualizou Alerta / Histórico', `Acessou prontuário a partir do alerta: ${alert.id}`, alert.patient_id);
+                        onNavigate('prontuario', alert.patient_id);
+                      }}
                       className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold py-2 px-5 rounded-lg transition-colors cursor-pointer"
                     >
                       Ver Histórico
@@ -110,9 +116,8 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
 
                     <button
                       onClick={() => {
+                        dataManager.addAuditLog('Resolveu Alerta', `Marcou alerta comportamental como resolvido: ${alert.id}`, alert.patient_id);
                         dataManager.updateDiaryEntry(alert.id, { crisis_flag: false });
-                        onNavigate('alertas'); // Just to trigger a refresh via parent if possible, or we need to pass a refresh trigger
-                        // Actually, we can just call onNavigate('alertas') to trigger re-render? Wait, better pass a local state or triggerRefresh
                       }}
                       className="ml-auto text-slate-400 hover:text-emerald-600 text-sm font-medium transition-colors cursor-pointer flex items-center space-x-1.5"
                     >
@@ -126,6 +131,6 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -3,11 +3,15 @@ import { motion } from 'motion/react';
 import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2 } from 'lucide-react';
 import { connectGoogleCalendar, isGoogleCalendarConnected } from '../googleCalendar';
 import { dataManager, compressImage } from '../data';
+import { useStore } from '../store';
 import { maskCNPJ, maskDate, maskPhone, maskCEP } from '../utils/masks';
 import { getStates, getCities, fetchAddressByCep, IBGEState, IBGECity } from '../utils/ibge';
 
 export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: () => void }) {
-  const doc = dataManager.getDoctor();
+  const sessionId = localStorage.getItem('cm_doctor_session');
+  const doctorsStore = useStore(state => state.doctors);
+  const doc = doctorsStore.find(d => d.id === sessionId) || doctorsStore[0] || dataManager.getDoctor();
+  
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'integrations' | 'whatsapp'>('profile');
   const [googleConnected, setGoogleConnected] = useState(isGoogleCalendarConnected());
   const [isEditing, setIsEditing] = useState(doc?.is_configured === false);
@@ -112,10 +116,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
     setIsEditing(false);
     // Em um app real, os dados do profile seriam salvos globalmente.
     // Aqui sincronizamos as salas pro doctor logado para a Agenda reconhecer:
-    const sessionId = localStorage.getItem('cm_doctor_session');
     if (sessionId) {
-      const docs = dataManager.getDoctors();
-      const doc = docs.find(d => d.id === sessionId);
+      const doc = doctorsStore.find(d => d.id === sessionId) || dataManager.getDoctor();
       if (doc) {
         const roomsNum = parseInt(profileData.numberOfRooms, 10) || 1;
         doc.clinic_name = profileData.name;
@@ -169,13 +171,13 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-            <Settings2 className="h-6 w-6 text-slate-600" />
+          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight flex items-center space-x-2">
+            <Settings2 className="h-7 w-7 text-slate-800" />
             <span>Configurações</span>
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Gerencie as informações da clínica e integrações de ferramentas.</p>
+          <p className="text-[15px] font-medium text-slate-500 mt-1">Gerencie as informações da clínica e integrações de ferramentas.</p>
         </div>
       </div>
 

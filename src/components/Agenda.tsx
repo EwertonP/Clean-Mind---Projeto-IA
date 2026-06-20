@@ -1,19 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar as CalendarIcon, Clock, Plus, Users, Globe, MapPin, Check, Sparkles, RefreshCw, MessageSquare, CheckCircle2, CalendarPlus } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Plus, Users, Globe, MapPin, Check, Sparkles, RefreshCw, MessageSquare, CheckCircle2, CalendarPlus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Patient, dataManager } from '../data';
-import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarEvent, deleteGoogleCalendarEvent, sendAppointmentEmail } from '../googleCalendar';
+import { connectGoogleCalendar, isGoogleCalendarConnected, syncGoogleCalendarEvent, deleteGoogleCalendarEvent, sendAppointmentEmail, checkGoogleCalendarAvailability } from '../googleCalendar';
+import { useStore } from '../store';
 
 interface AgendaProps {
-  onRefreshDashboard: () => void;
   onNavigate?: (tab: string, patientId?: string, draft?: any) => void;
-  triggerRefresh: number;
   initialOpenNewModal?: boolean;
 }
 
-export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh, initialOpenNewModal }: AgendaProps) {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps) {
+  const patients = useStore(state => state.patients);
+  const appointmentsStore = useStore(state => state.appointments);
+  const doctorsStore = useStore(state => state.doctors);
+
+  const appointments = appointmentsStore;
+  const doctors = doctorsStore.filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
   
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -45,16 +48,13 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
   // Toast State
   const [toastMessage, setToastMessage] = useState('');
 
-  // Use dataManager.getDoctors() directly to avoid tracking a new array reference on every render
-  const doctors = dataManager.getDoctors().filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
-
   useEffect(() => {
     if (appointmentType === 'retorno') {
       setConsultationPrice('0.00');
     } else {
       const patient = patients.find(p => p.id === selectedPatientId);
       const doctorId = patient?.doctor_id || dataManager.getDoctor().id;
-      const doc = dataManager.getDoctors().find(d => d.id === doctorId);
+      const doc = doctorsStore.find(d => d.id === doctorId);
       setConsultationPrice(doc?.consultation_price ? doc.consultation_price.toFixed(2) : '350.00');
     }
   }, [appointmentType, selectedPatientId, patients, showForm]);
@@ -67,19 +67,14 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
   }, [initialOpenNewModal]);
 
   useEffect(() => {
-    const fetchedPatients = dataManager.getPatients();
-    setPatients(fetchedPatients);
-    setAppointments(dataManager.getAppointments());
-    if (selectedPatientId === '' && fetchedPatients.length > 0) {
-      setSelectedPatientId(fetchedPatients[0].id);
+    if (selectedPatientId === '' && patients.length > 0) {
+      setSelectedPatientId(patients[0].id);
     }
     
-    // Use dataManager.getDoctors() directly to avoid tracking a new array reference on every render
-    const fetchedDoctors = dataManager.getDoctors().filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
-    if (configDoctorId === '' && fetchedDoctors.length > 0) {
-      setConfigDoctorId(fetchedDoctors[0].id);
+    if (configDoctorId === '' && doctors.length > 0) {
+      setConfigDoctorId(doctors[0].id);
     }
-  }, [triggerRefresh]);
+  }, [patients, doctors]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,24 +89,39 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
       return;
     }
 
-    if (type === 'presencial') {
-      // Check for conflicts
-      const startDateTime = new Date(`${date}T${startTime}`);
-      const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+    // Check for conflicts
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+    
+    // Find the doctor handling this appointment to check conflicts
+    const doctorId = patients.find(p => p.id === selectedPatientId)?.doctor_id || dataManager.getDoctor().id;
+    const docForCheck = doctors.find(d => d.id === doctorId);
+    
+    const hasConflict = dataManager.getAppointments().some((app) => {
+      if (app.date !== date || app.status === 'canceled' || app.doctor_id !== doctorId) return false;
+      if (editingAppointmentId && app.id === editingAppointmentId) return false;
       
-      const hasConflict = dataManager.getAppointments().some((app) => {
-        if (app.type !== 'presencial' || app.room !== room || app.date !== date || app.status === 'canceled') return false;
-        if (editingAppointmentId && app.id === editingAppointmentId) return false;
-        
-        const appStart = new Date(`${app.date}T${app.start_time}`);
-        const appEnd = new Date(appStart.getTime() + app.duration * 60000);
-        
-        // Conflict occurs if new start time is before existing end time AND new end time is after existing start time
-        return startDateTime < appEnd && endDateTime > appStart;
-      });
+      const appStart = new Date(`${app.date}T${app.start_time}`);
+      const appEnd = new Date(appStart.getTime() + app.duration * 60000);
+      
+      // Conflict occurs if new start time is before existing end time AND new end time is after existing start time
+      return startDateTime < appEnd && endDateTime > appStart;
+    });
 
-      if (hasConflict) {
-        setToastMessage(`Conflito: A ${room} já está ocupada neste horário.`);
+    if (hasConflict) {
+      setToastMessage(`Conflito: Este médico já possui outro agendamento neste horário no sistema.`);
+      setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+    
+    // Check Google Calendar API conflicts
+    const tokenForCheck = docForCheck?.google_access_token;
+    if (tokenForCheck || isGoogleCalendarConnected()) {
+      const editingApp = editingAppointmentId ? dataManager.getAppointments().find(a => a.id === editingAppointmentId) : undefined;
+      const isAvailable = await checkGoogleCalendarAvailability(startDateTime, endDateTime, tokenForCheck, editingApp?.google_event_id);
+      
+      if (!isAvailable) {
+        setToastMessage(`Conflito: Este horário já está ocupado no Google Calendar do médico.`);
         setTimeout(() => setToastMessage(''), 3000);
         return;
       }
@@ -157,16 +167,16 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
     }
 
     // Refresh clinical lists
-    setAppointments(dataManager.getAppointments());
     
-    if (isGoogleCalendarConnected()) {
-      const doc = doctors.find(d => d.id === newApp.doctor_id);
+    const doc = doctors.find(d => d.id === newApp.doctor_id);
+    const doctorToken = doc?.google_access_token;
+    
+    if (isGoogleCalendarConnected() || doctorToken) {
       const doctorName = doc ? doc.name : 'Médico';
       const actualRoom = newApp.type === 'presencial' ? newApp.room : undefined;
-      const gEventId = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom);
+      const gEventId = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom, doctorToken);
       if (gEventId && !newApp.google_event_id) {
         newApp = dataManager.updateAppointment(newApp.id, { google_event_id: gEventId });
-        setAppointments(dataManager.getAppointments());
       }
       
       const pat = patients.find(p => p.id === selectedPatientId);
@@ -186,7 +196,6 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
     // Reset Form
     setShowForm(false);
     setShowDeleteConfirm(false);
-    onRefreshDashboard();
 
     // Auto dismiss Toast
     setTimeout(() => {
@@ -208,13 +217,14 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
     const appToDel = appointments.find(a => a.id === editingAppointmentId);
     
     dataManager.deleteAppointment(editingAppointmentId);
-    setAppointments(dataManager.getAppointments());
     setShowForm(false);
     setShowDeleteConfirm(false);
-    onRefreshDashboard();
+
+    const doc = doctors.find(d => d.id === appToDel?.doctor_id);
+    const doctorToken = doc?.google_access_token;
     
-    if (appToDel?.google_event_id && isGoogleCalendarConnected()) {
-      await deleteGoogleCalendarEvent(appToDel.google_event_id);
+    if (appToDel?.google_event_id && (isGoogleCalendarConnected() || doctorToken)) {
+      await deleteGoogleCalendarEvent(appToDel.google_event_id, doctorToken);
     }
     
     setToastMessage('Agendamento excluído com sucesso');
@@ -396,7 +406,13 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
   };
 
   return (
-    <div className="space-y-8 font-sans">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-8 font-sans"
+    >
       
       {/* Toast Alert Simulation */}
       <AnimatePresence>
@@ -415,28 +431,10 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
       </AnimatePresence>
 
       {/* Header Block */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agenda</h1>
-          <p className="text-sm text-slate-500 mt-1">Gerencie seus agendamentos e compromissos clínicos.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={async () => {
-              try {
-                await connectGoogleCalendar();
-                setToastMessage('Google Calendar sincronizado para exportação!');
-                setTimeout(() => setToastMessage(''), 3000);
-              } catch (e) {
-                setToastMessage('Erro ao conectar Calendar');
-                setTimeout(() => setToastMessage(''), 3000);
-              }
-            }}
-            className="bg-white text-slate-700 border border-slate-300 font-semibold text-sm px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
-          >
-            <CalendarPlus className="h-4 w-4" />
-            <span>Exportar para Google Calendar</span>
-          </button>
+          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Agenda</h1>
+          <p className="text-[15px] font-medium text-slate-500 mt-1">Gerencie seus agendamentos e compromissos clínicos.</p>
         </div>
       </div>
 
@@ -463,25 +461,40 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
       </div>
 
       {/* Modal / Overlay Form */}
+      <AnimatePresence>
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-screen">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-slate-900">
-                <CalendarIcon className="h-5 w-5 text-emerald-500" />
-                <h3 className="font-bold text-lg">{editingAppointmentId ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
+        <div className="fixed inset-0 z-50">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setShowForm(false)}
+          ></motion.div>
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl flex flex-col z-10 border-l border-slate-200"
+          >
+            <form onSubmit={handleSubmit} className="bg-white w-full h-full flex flex-col">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-2 text-slate-900">
+                  <CalendarIcon className="h-5 w-5 text-emerald-500" />
+                  <h3 className="font-bold text-lg">{editingAppointmentId ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setShowForm(false)}
+                  className="text-slate-400 hover:text-slate-600 p-2 -mr-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setShowForm(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto space-y-6">
+              
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* WhatsApp Banner */}
               <div className="bg-emerald-50 border border-emerald-500/30 rounded-xl p-4 flex items-start space-x-3">
                 <MessageSquare className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
@@ -694,8 +707,10 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
                 </button>
             </div>
           </form>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
       {/* Main Calendar View Container */}
       {activeSubTab === 'calendario' && (
@@ -718,7 +733,6 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                 setAppointments(dataManager.getAppointments());
                  setToastMessage('Calendário atualizado');
                  setTimeout(() => setToastMessage(''), 3000);
               }}
@@ -734,10 +748,9 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
                   setSelectedPatientId(patients[0].id);
                 }
               }}
-              className="hidden md:flex bg-slate-900 text-white font-semibold text-sm px-4 py-2 rounded-xl hover:bg-slate-800 transition-colors items-center space-x-2 shadow-sm focus:ring-4 focus:ring-slate-900/10"
+              className="hidden md:flex px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition items-center shadow-md h-10 cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
-              <span>Novo Agendamento</span>
+              <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Novo Agendamento
             </button>
           </div>
         </div>
@@ -982,6 +995,6 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh,
         Todas as consultas mostradas e inseridas estão restritas ao isolamento por token de identificação do médico. Os alertas e confirmações são despachados de ponta-a-ponta usando criptografia pós-sessão do WhatsApp Webhook.
       </div>
 
-    </div>
+    </motion.div>
   );
 }

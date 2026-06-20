@@ -4,14 +4,19 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Patient, DiaryEntry, MedicalRecord, dataManager } from '../data';
 import html2pdf from 'html2pdf.js';
 
+import { useStore } from '../store';
+
 interface MedicalRecordEditorProps {
   initialPatientId?: string;
-  onRefreshDashboard: () => void;
-  triggerRefresh: number;
 }
 
-export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboard, triggerRefresh }: MedicalRecordEditorProps) {
-  const [patients, setPatients] = useState<Patient[]>([]);
+export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordEditorProps) {
+  const patientsStore = useStore(state => state.patients);
+  const medicalRecordsStore = useStore(state => state.medicalRecords);
+  const diaryStore = useStore(state => state.diary);
+  
+  const patients = patientsStore;
+  const historyRaw = medicalRecordsStore;
   const [filterPatientId, setFilterPatientId] = useState(initialPatientId || '');
   const [selectedFormPatientId, setSelectedFormPatientId] = useState('');
   const [evolutionText, setEvolutionText] = useState('');
@@ -71,24 +76,20 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
   };
 
   useEffect(() => {
-    const list = dataManager.getPatients();
-    setPatients(list);
-    
     // Choose patient default for filter if initialPatientId exists
-    if (initialPatientId && list.some(p => p.id === initialPatientId)) {
+    if (initialPatientId && patients.some(p => p.id === initialPatientId)) {
       setFilterPatientId(initialPatientId);
     }
-  }, [initialPatientId, triggerRefresh]);
+  }, [initialPatientId, patients]);
 
   // Load history records for the main view
   useEffect(() => {
-    const allRecords = dataManager.getMedicalRecords();
     if (filterPatientId) {
-      setHistory(allRecords.filter(r => r.patient_id === filterPatientId));
+      setHistory(historyRaw.filter(r => r.patient_id === filterPatientId));
     } else {
-      setHistory(allRecords);
+      setHistory(historyRaw);
     }
-  }, [filterPatientId, triggerRefresh]);
+  }, [filterPatientId, historyRaw]);
 
   // Handle form state changes when a patient is selected in the modal
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
       return;
     }
 
-    const allRecords = dataManager.getMedicalRecords();
+    const allRecords = historyRaw;
     const patientRecords = allRecords.filter(r => r.patient_id === selectedFormPatientId);
 
     // If there is an active unsigned draft for this patient, load it.
@@ -128,11 +129,11 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
   }, [selectedFormPatientId, showForm]);
 
   // Filter diary entries for the selected patient
-  const patientDiaries = dataManager.getDiaryEntries().filter(d => d.patient_id === selectedFormPatientId);
+  const patientDiaries = diaryStore.filter(d => d.patient_id === selectedFormPatientId);
 
   // Simulated AI CDS compiler (compliance with ANVISA RDC 657/2022)
   const generateMedicalAISummary = (patId: string) => {
-    const diaries = dataManager.getDiaryEntries().filter(d => d.patient_id === patId);
+    const diaries = diaryStore.filter(d => d.patient_id === patId);
     if (diaries.length === 0) {
       setAiSummary('Dados insuficientes recebidos pelo diário WhatsApp. Aguardando maior amostragem do comportamento diário.');
       return;
@@ -174,7 +175,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
     if (!selectedFormPatientId || (!evolutionText && !prontuarioText)) return;
 
     // Save as local draft first
-    const list = dataManager.getMedicalRecords();
+    const list = historyRaw;
     const index = list.findIndex(r => r.patient_id === selectedFormPatientId && r.signature_status === 'unsigned');
 
     if (index !== -1) {
@@ -193,11 +194,11 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
       });
     }
 
+    dataManager.addAuditLog('Editou Evolução', 'Salvou rascunho temporário do prontuário.', selectedFormPatientId);
     setToastMessage('Rascunho salvo');
-    onRefreshDashboard();
     
     // Reload history list for bottom render if it matches active filter or filter is empty
-    const patientRecords = dataManager.getMedicalRecords();
+    const patientRecords = historyRaw;
     if (filterPatientId) {
       setHistory(patientRecords.filter(r => r.patient_id === filterPatientId));
     } else {
@@ -220,7 +221,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
       hex += chars[Math.floor(Math.random() * chars.length)];
     }
 
-    const list = dataManager.getMedicalRecords();
+    const list = historyRaw;
     // Clear out any unsigned drafts first
     const draft = list.find(r => r.patient_id === selectedFormPatientId && r.signature_status === 'unsigned');
     if (draft) {
@@ -243,10 +244,11 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
     setSignatureStatus('signed_icp');
     setSignedAt(nowStr);
     setSignatureHash(hex);
-    onRefreshDashboard();
+    
+    dataManager.addAuditLog('Assinou Evolução', `Assinou digitalmente (ICP-Brasil) o prontuário. Hash: ${hex}`, selectedFormPatientId);
 
     // Refresh clinical list
-    const updatedList = dataManager.getMedicalRecords();
+    const updatedList = historyRaw;
     if (filterPatientId) {
       setHistory(updatedList.filter(r => r.patient_id === filterPatientId));
     } else {
@@ -273,7 +275,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
   const handleDeleteRecord = (id: string) => {
     dataManager.deleteMedicalRecord(id);
     
-    const list = dataManager.getMedicalRecords().sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const list = historyRaw.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     if (filterPatientId) {
       setHistory(list.filter(r => r.patient_id === filterPatientId));
     } else {
@@ -292,6 +294,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
       signature_status: 'unsigned',
       signed_at: undefined
     });
+    dataManager.addAuditLog('Reabriu Evolução', `Quebrou assinatura e iniciou edição do prontuário: ${record.id}`, record.patient_id);
     
     setSelectedFormPatientId(record.patient_id);
     setEvolutionText(record.evolution_text || '');
@@ -303,7 +306,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
     setShowForm(true);
     setViewingRecord(null);
     
-    const updatedList = dataManager.getMedicalRecords().sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const updatedList = historyRaw.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     if (filterPatientId) {
       setHistory(updatedList.filter(r => r.patient_id === filterPatientId));
     } else {
@@ -336,7 +339,13 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
   }, [exportRecord, isExporting]);
 
   return (
-    <div className="space-y-8 font-sans">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-8 font-sans"
+    >
       
       {/* Toast Alert */}
       <AnimatePresence>
@@ -355,21 +364,21 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
       </AnimatePresence>
 
       {/* Header Select Patient */}
-      <div className="flex flex-col md:flex-row md:items-start gap-4 border-b border-slate-200 pb-5 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Evolução Clínica e Prontuários</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Evolução Clínica e Prontuários</h1>
+          <p className="text-[15px] font-medium text-slate-500 mt-1">
             Evolução de pacientes no padrão ICP-Brasil integrado a insights diários por inteligência artificial.
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-            <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">Filtrar por Paciente:</span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-[14px] font-semibold text-slate-700 whitespace-nowrap">Filtrar:</span>
             <select
               value={filterPatientId}
               onChange={(e) => setFilterPatientId(e.target.value)}
-              className="px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] font-medium min-w-[240px] shadow-sm flex-1 sm:flex-none"
+              className="px-4 py-2 text-[14px] bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] font-medium min-w-[200px] shadow-sm h-10"
             >
               <option value="">Todos os pacientes</option>
               {patients.map(p => (
@@ -383,17 +392,30 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
               setFormStep(1);
               setShowForm(true);
             }}
-            className="w-full sm:w-auto bg-[#C1E2A4] text-slate-900 text-sm border border-[#b0d292] font-semibold px-5 py-2.5 rounded-lg hover:bg-[#b0d292] transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
           >
-            <FileText className="h-4 w-4 shrink-0" />
-            <span>Nova Evolução e Prontuário</span>
+            <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Nova Evolução
           </button>
         </div>
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-bg-primary rounded-2xl w-full max-w-6xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
+      <AnimatePresence>
+        {showForm && (
+        <div className="fixed inset-0 z-50">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setShowForm(false)}
+          ></motion.div>
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl flex flex-col z-10 border-l border-slate-200"
+          >
             <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
                <h3 className="font-bold text-lg text-slate-900 flex items-center space-x-2">
                  <FileText className="h-5 w-5 text-emerald-500" />
@@ -408,9 +430,9 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
                  )}
                  <button 
                    onClick={() => setShowForm(false)}
-                   className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                   className="text-slate-400 hover:text-slate-600 p-2 -mr-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
                  >
-                   ×
+                   <X className="h-5 w-5" />
                  </button>
                </div>
             </div>
@@ -421,7 +443,9 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
                     <h2 className="text-2xl font-serif font-bold text-[#192F28] mb-8 text-center mt-4">Para qual paciente é o registro?</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {patients.map(p => (
-                        <button 
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }}
+                          transition={{ duration: 0.2 }}
                           key={p.id}
                           onClick={() => { setSelectedFormPatientId(p.id); setFormStep(2); }}
                           className="bg-white hover:bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4 cursor-pointer text-center transition-all hover:border-[#C1E2A4] hover:shadow-md h-full group"
@@ -433,7 +457,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
                             <p className="font-bold text-slate-800 text-lg leading-tight">{p.name}</p>
                             <p className="text-sm text-slate-500 mt-1 font-mono">{p.phone}</p>
                           </div>
-                        </button>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
@@ -455,7 +479,9 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
                          { id: 'atestado', label: 'Atestado Médico', desc: 'Declaração de dias de afastamento e CID-10.', icon: FileText },
                          { id: 'livre', label: 'Em Branco', desc: 'Inicia um rascunho de prontuário sem formatação.', icon: FileText }
                        ].map((type) => (
-                         <button
+                         <motion.button
+                            whileHover={{ scale: 1.01 }}
+                            transition={{ duration: 0.2 }}
                             key={type.id}
                             onClick={() => {
                                setFormType(type.id as any);
@@ -475,7 +501,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
                                <h3 className="font-bold text-slate-900 text-lg pb-1">{type.label}</h3>
                                <p className="text-sm text-slate-500 leading-relaxed">{type.desc}</p>
                             </div>
-                         </button>
+                         </motion.button>
                        ))}
                      </div>
                   </div>
@@ -684,9 +710,10 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
              </div>
             )}
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
       {/* History archives block */}
       <div className="space-y-4">
@@ -700,7 +727,11 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {history.map((record) => (
-              <div key={record.id} onClick={() => setViewingRecord(record)} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-sm hover:border-slate-300 transition group cursor-pointer hover:shadow-md">
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+                key={record.id} onClick={() => setViewingRecord(record)} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-sm hover:border-slate-300 transition group cursor-pointer hover:shadow-md"
+              >
                 <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                   <div className="flex flex-col gap-1">
                     <span className="font-bold text-sm text-[#192F28]">{getPatientName(record.patient_id)}</span>
@@ -744,7 +775,7 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
@@ -964,6 +995,6 @@ export default function MedicalRecordEditor({ initialPatientId, onRefreshDashboa
         </div>
       )}
 
-    </div>
+    </motion.div>
   );
 }

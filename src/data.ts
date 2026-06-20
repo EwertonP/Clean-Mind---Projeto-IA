@@ -42,6 +42,8 @@ export interface Doctor {
   consultation_price?: number;
   created_at?: string;
   photo_url?: string;
+  google_access_token?: string;
+  google_connected_email?: string;
 }
 
 export interface Patient {
@@ -236,6 +238,24 @@ export const dataManager = {
     const filteredDocs = docs.filter(d => d.id !== id);
     dataManager.saveDoctors(filteredDocs);
     removeFirestoreDoc('doctors', id);
+  },
+
+  addAuditLog: (action: string, details: string, patient_id?: string) => {
+    const docId = dataManager.getDoctor().id;
+    if (!docId) return;
+    const log = {
+      id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      doctor_id: docId,
+      patient_id: patient_id || '',
+      action,
+      details,
+      created_at: new Date().toISOString()
+    };
+    // Salva localmente se quiser, mas prioritário no firestore
+    const localLogs = getOrInit<any[]>('cm_audit_logs', []);
+    localLogs.unshift(log);
+    save('cm_audit_logs', localLogs);
+    persistToFirestore('audit_logs', log.id, log);
   },
 
   getPatients: (): Patient[] => {
