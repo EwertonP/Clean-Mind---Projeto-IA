@@ -384,23 +384,34 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filteredPatients.map((patient) => {
-              const fakeData = MOCK_EXTRA_DATA[patient.name] || {
-                diag: 'Avaliação',
-                since: 'Novo paciente',
-                sessions: 0,
-                nextAppt: '-',
-                status: 'Ativo',
-                trend: 'neutral'
-              };
-              
-              const isInactive = fakeData.status === 'Inativo';
+              const fakeData = MOCK_EXTRA_DATA[patient.name] || {};
+              const isInactive = fakeData.status === 'Inativo' || patient.status === 'inactive';
               
               let emailMock = patient.email;
               if (!emailMock || emailMock === '') {
                 emailMock = patient.name.toLowerCase().replace(' ', '.') + '@email.com';
               }
               
+              // REAL DATA CALCULATION:
               const patientAppts = appointments.filter(a => a.patient_id === patient.id);
+              const completedSessions = patientAppts.filter(a => a.status === 'completed').length + (fakeData.sessions || 0);
+
+              let nextApptDisplay = '-';
+              const now = new Date();
+              const upcomingAppts = patientAppts
+                .filter(a => (a.status === 'confirmed' || a.status === 'pending') && new Date(`${a.date}T${a.start_time}`) > now)
+                .sort((a, b) => new Date(`${a.date}T${a.start_time}`).getTime() - new Date(`${b.date}T${b.start_time}`).getTime());
+
+              if (upcomingAppts.length > 0) {
+                const next = upcomingAppts[0];
+                const nextDate = new Date(`${next.date}T${next.start_time}`);
+                const day = String(nextDate.getDate()).padStart(2, '0');
+                const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                nextApptDisplay = `${day} ${monthNames[nextDate.getMonth()].toUpperCase()} ${next.start_time}`;
+              } else if (fakeData.nextAppt && fakeData.nextAppt !== '-') {
+                 nextApptDisplay = fakeData.nextAppt;
+              }
+
               let hasNoRecentAppt = false;
               const thirtyDaysAgo = new Date();
               thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -420,12 +431,12 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
               return (
                 <tr 
                   key={patient.id} 
-                  className="hover:bg-slate-100 transition-colors bg-white group cursor-pointer"
+                  className="hover:bg-slate-50 transition-colors bg-white group cursor-pointer"
                   onClick={() => setSelectedPatientForDetail(patient)}
                 >
                   <td className="py-4 px-8">
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 font-bold text-sm tracking-wide overflow-hidden border border-slate-300">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 font-bold text-sm tracking-wide overflow-hidden border border-slate-200">
                         {patient.photo_url ? (
                           <img src={patient.photo_url} alt={patient.name} className="w-full h-full object-cover" />
                         ) : (
@@ -438,8 +449,8 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                       </div>
                       <div className="flex flex-col justify-center">
                        <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight flex items-center space-x-2">
-                          <span>{patient.name}</span>
-                          {hasNoRecentAppt && (
+                          <span className="group-hover:text-emerald-700 transition-colors">{patient.name}</span>
+                          {!isInactive && hasNoRecentAppt && (
                             <div title="Sem agendamento há mais de 30 dias" className="flex items-center justify-center text-amber-500 bg-amber-50/80 p-1 rounded-md border border-amber-100/50">
                               <Clock className="w-3.5 h-3.5" />
                             </div>
@@ -464,13 +475,12 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                             })}
                           </div>
                         )}
-                        <div className="text-xs text-slate-500 mt-1">{fakeData.since}</div>
                       </div>
                     </div>
                   </td>
                   <td className="py-4 px-8">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 whitespace-nowrap">
-                      {fakeData.diag}
+                      {fakeData.diag || 'Avaliação Inicial'}
                     </span>
                   </td>
                   <td className="py-4 px-8">
@@ -492,14 +502,14 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                   </td>
                   <td className="py-4 px-8 text-center text-sm font-bold text-slate-900">
                     <div className="flex items-center justify-center space-x-1.5">
-                      <span>{fakeData.sessions}</span>
+                      <span>{completedSessions}</span>
                       {fakeData.trend === 'up' && <span title="Alta frequência recente"><TrendingUp className="w-4 h-4 text-emerald-500" /></span>}
                       {fakeData.trend === 'down' && <span title="Baixa frequência recente"><TrendingDown className="w-4 h-4 text-rose-500" /></span>}
                       {fakeData.trend === 'neutral' && <span title="Frequência estável"><Minus className="w-4 h-4 text-slate-300" /></span>}
                     </div>
                   </td>
                   <td className="py-4 px-8 text-sm font-medium text-slate-700 whitespace-nowrap">
-                    {fakeData.nextAppt}
+                    {nextApptDisplay}
                   </td>
                   <td className="py-4 px-8">
                     {isInactive ? (
@@ -514,10 +524,10 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
                   </td>
                   <td className="py-4 px-8 text-center">
                     <button 
-                      onClick={() => setSelectedPatientForDetail(patient)}
-                      className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors uppercase tracking-wider title-case cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); setSelectedPatientForDetail(patient); }}
+                      className="text-sm font-medium text-emerald-600 hover:text-emerald-800 transition-colors uppercase tracking-wider title-case cursor-pointer"
                     >
-                      Ver Perfil
+                      Perfil
                     </button>
                   </td>
                 </tr>
@@ -526,8 +536,12 @@ export default function PatientDiaryApp({ onRefreshDashboard, triggerRefresh }: 
             
             {filteredPatients.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-slate-500 text-sm">
-                  Nenhum paciente encontrado.
+                <td colSpan={8} className="text-center py-12">
+                   <div className="flex flex-col items-center justify-center text-slate-500">
+                     <User className="w-10 h-10 mb-3 text-slate-300" />
+                     <p className="font-semibold text-slate-600">Nenhum paciente encontrado</p>
+                     <p className="text-sm mt-1">Tente ajustar seus filtros ou realizar uma nova busca.</p>
+                  </div>
                 </td>
               </tr>
             )}

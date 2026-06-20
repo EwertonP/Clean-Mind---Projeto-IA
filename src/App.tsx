@@ -18,7 +18,8 @@ import {
   X,
   Stethoscope,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Doctor, dataManager } from './data';
@@ -37,6 +38,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedPatientParam, setSelectedPatientParam] = useState<string | undefined>(undefined);
   const [billingDraftParam, setBillingDraftParam] = useState<any>(null);
+  const [openNewAppointmentParam, setOpenNewAppointmentParam] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [globalToastMessage, setGlobalToastMessage] = useState('');
@@ -102,7 +104,13 @@ export default function App() {
   const handleNavigateWithParams = (tab: string, patientId?: string, draft?: any) => {
     setSelectedPatientParam(patientId);
     if (draft) {
-      setBillingDraftParam(draft);
+      if (tab === 'agenda' && draft === 'new_appointment') {
+        setOpenNewAppointmentParam(true);
+      } else {
+        setBillingDraftParam(draft);
+      }
+    } else {
+      setOpenNewAppointmentParam(false);
     }
     setActiveTab(tab);
     setIsMobileMenuOpen(false); // Close menu on navigation
@@ -175,125 +183,68 @@ export default function App() {
       )}
 
       {/* Navigation Sidebar (Desktop & Mobile Drawer) */}
-      <aside className={`fixed top-0 left-0 h-screen w-[260px] md:w-64 flex-col border-r border-slate-200 bg-white z-40 shadow-xl md:shadow-sm transform transition-transform duration-300 ease-in-out md:flex ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full md:translate-x-0 hidden'}`}>
+      <aside className={`fixed top-0 left-0 h-screen w-[260px] flex-col border-r border-slate-100 bg-white z-40 shadow-xl md:shadow-none transform transition-transform duration-300 ease-in-out md:flex ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full md:translate-x-0 hidden'}`}>
         <div className="flex flex-col flex-grow">
           
           {/* Brand Seal header */}
-          <div className="p-5 md:p-6 flex items-center justify-between z-10 relative">
-            <div>
-              <h1 className="text-xl md:text-2xl font-serif font-bold tracking-tight text-slate-900 mb-4 md:mb-6">cleanmind.</h1>
-              <div className="flex items-center space-x-3 min-w-0 flex-1">
-                {doctor?.clinic_logo ? (
-                  <img src={doctor.clinic_logo} alt="Logo da Clínica" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover shrink-0 border border-slate-200" />
-                ) : (
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-xs md:text-sm shrink-0">
-                    {doctor?.clinic_name ? doctor.clinic_name.charAt(0).toUpperCase() : 'C'}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs md:text-sm font-bold text-slate-900 truncate" title={doctor?.clinic_name}>{doctor?.clinic_name || 'Sua Clínica'}</p>
-                  <p className="text-[10px] md:text-[11px] text-slate-500 truncate" title={doctor?.name}>{doctor?.name || 'Médico'}</p>
-                </div>
+          <div className="p-6 pb-2 inline-flex items-center space-x-2 relative">
+            <img src="/cleanmind_logo.png" alt="CleanMind" className="h-8 object-contain" onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              const fallback = document.getElementById('logo-fallback-desktop');
+              if (fallback) fallback.style.display = 'flex';
+            }} />
+            <div id="logo-fallback-desktop" className="hidden items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-[#C1E2A4] flex items-center justify-center text-[#192F28]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                  <path d="M12 21a9 9 0 0 0 8-12.8A9 9 0 0 0 5.4 6" />
+                  <path d="M21 3L9 15" />
+                  <path d="M12 21a9 9 0 0 1-8-12.8" />
+                  <path d="M3 21L15 9" />
+                </svg>
               </div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">CleanMind</h1>
             </div>
             
-            {/* Close button for mobile */}
             <button 
-              className="md:hidden p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
+              className="md:hidden absolute right-4 top-6 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Navigation Links list */}
-          <nav className="flex-grow px-3 md:px-4 space-y-1 mt-2 overflow-y-auto">
-            {true ? (
-              <>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigateWithParams('dashboard')}
-                  className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <LayoutDashboard className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  </motion.div>
-                  <span>Dashboard</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigateWithParams('agenda')}
-                  className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'agenda' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <Calendar className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  </motion.div>
-                  <span>Agenda</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigateWithParams('financeiro')}
-                  className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'financeiro' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <Wallet className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  </motion.div>
-                  <span>Financeiro</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigateWithParams('prontuario')}
-                  className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'prontuario' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <FileText className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  </motion.div>
-                  <span>Prontuários</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigateWithParams('paciente')}
-                  className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'paciente' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <User className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  </motion.div>
-                  <span>Pacientes</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleNavigateWithParams('medicos')}
-                  className={`w-full text-left px-3 md:px-4 py-2.5 md:py-3 rounded-lg text-xs md:text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'medicos' ? 'bg-[#C1E2A4] text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                    <Stethoscope className="h-4 w-4 md:h-5 md:w-5 shrink-0" />
-                  </motion.div>
-                  <span>Médicos</span>
-                </motion.button>
-              </>
-            ) : (
-              <div className="px-4 py-4 text-xs text-slate-500 font-medium text-center bg-amber-50 rounded-lg border border-amber-100">
-                Conclua as configurações iniciais para liberar o acesso.
+          {/* User Profile Card */}
+          <div className="px-4 mt-4">
+            <button 
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-100 shadow-sm rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center min-w-0">
+                {doctor?.clinic_logo ? (
+                  <img src={doctor.clinic_logo} alt="Logo" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs shrink-0">
+                    {doctor?.clinic_name ? doctor.clinic_name.charAt(0).toUpperCase() : 'C'}
+                  </div>
+                )}
+                <div className="ml-3 min-w-0 text-left">
+                  <p className="text-sm font-bold text-slate-900 truncate">{doctor?.name || 'Médico(a)'}</p>
+                  <p className="text-xs text-slate-500 truncate">{doctor?.email || 'email@exemplo.com'}</p>
+                </div>
               </div>
-            )}
-          </nav>
-        </div>
+              <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+              </svg>
+            </button>
+          </div>
 
-        {/* Doctor Identity Block */}
-        <div className="p-3 md:p-4 border-t border-slate-200 mt-auto relative">
-          
           <AnimatePresence>
             {isUserMenuOpen && (
               <motion.div 
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50"
+                exit={{ opacity: 0, y: -10 }}
+                className="mx-4 mt-2 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden z-50 absolute w-[228px] top-[140px]"
               >
                 <div className="p-2 space-y-1">
                   <button 
@@ -316,76 +267,138 @@ export default function App() {
                     <MessageSquare className="h-4 w-4 shrink-0" />
                     <span>Suporte</span>
                   </a>
-                  <div className="h-px bg-slate-100 my-1"></div>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsUserMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-600 hover:bg-red-50"
-                  >
-                    <LogOut className="h-4 w-4 shrink-0" />
-                    <span>Sair da conta</span>
-                  </button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <button 
-            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="w-full flex items-center justify-between px-3 md:px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
-          >
-            <div className="flex items-center space-x-3 min-w-0 flex-1 mr-2">
-              <User className="h-5 w-5 md:h-6 md:w-6 text-slate-500 shrink-0" />
-              <div className="min-w-0 flex-1 text-left">
-                <span className="text-xs md:text-sm font-medium text-slate-900 block truncate" title={doctor?.email}>
-                  {doctor?.email || 'Usuário'}
-                </span>
-                <span className="text-[10px] text-slate-500 block truncate">
-                  Opções e Perfil
-                </span>
+          {/* Navigation Links list */}
+          <nav className="flex-grow px-4 space-y-5 mt-8 overflow-y-auto pb-4">
+            {true ? (
+              <>
+                <div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3">Geral</h3>
+                  <div className="space-y-0.5">
+                    <button
+                      onClick={() => handleNavigateWithParams('dashboard')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <LayoutDashboard className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'dashboard' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Dashboard</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigateWithParams('paciente')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'paciente' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <Users className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'paciente' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Pacientes</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigateWithParams('agenda')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'agenda' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <Calendar className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'agenda' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Agenda</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3">Clínica</h3>
+                  <div className="space-y-0.5">
+                    <button
+                      onClick={() => handleNavigateWithParams('prontuario')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'prontuario' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <FileText className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'prontuario' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Prontuários</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigateWithParams('alertas')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'alertas' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <AlertTriangle className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'alertas' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Alertas Clínicos</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigateWithParams('diario')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'diario' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <BrainCircuit className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'diario' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Diário do Paciente</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3">Administração</h3>
+                  <div className="space-y-0.5">
+                    <button
+                      onClick={() => handleNavigateWithParams('financeiro')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'financeiro' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <Wallet className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'financeiro' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Financeiro</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigateWithParams('medicos')}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'medicos' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <Stethoscope className={`h-[18px] w-[18px] shrink-0 ${activeTab === 'medicos' ? 'text-[#76A34A]' : ''}`} />
+                      <span>Médicos Associados</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="px-4 py-4 text-xs text-slate-500 font-medium text-center bg-amber-50 rounded-lg border border-amber-100">
+                Conclua as configurações iniciais para liberar o acesso.
               </div>
-            </div>
-          </button>
+            )}
+          </nav>
+          
+          {/* Footer Area Navigation */}
+          <div className="p-4 mt-auto">
+             <button
+                onClick={() => {
+                  handleLogout();
+                  setIsUserMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="h-[18px] w-[18px] shrink-0" />
+                <span>Logout</span>
+              </button>
+          </div>
         </div>
       </aside>
 
       {/* Main viewport Container */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen md:ml-64 w-full relative">
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen md:ml-[260px] bg-slate-50 w-full relative">
         
         {/* Header navigation controller */}
-        <header className="sticky top-0 z-10 h-16 md:h-20 border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 bg-white/80 backdrop-blur-md shrink-0 transition-all">
+        <header className={`sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 shrink-0 transition-all ${
+          activeTab === 'dashboard' 
+            ? 'h-16 md:h-8 bg-transparent border-none' 
+            : 'h-16 md:h-20 border-b border-slate-200 bg-white/80 backdrop-blur-md'
+        }`}>
           
           <div className="flex items-center space-x-3 sm:space-x-4">
             {/* Small screen menu triggers */}
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center mt-4">
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="p-1.5 -ml-1.5 mr-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <span className="font-serif font-bold text-lg text-[#192F28]">cleanmind.</span>
+              <img src="/cleanmind_logo.png" alt="cleanmind." className="h-6 object-contain" onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                const fallback = document.getElementById('logo-fallback-mobile');
+                if (fallback) fallback.style.display = 'inline';
+              }} />
+              <span id="logo-fallback-mobile" className="hidden font-serif font-bold text-lg text-slate-900">cleanmind.</span>
             </div>
-          </div>
-
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            
-            <button
-              onClick={() => handleNavigateWithParams('alertas')}
-              className={`px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-full border transition-all flex items-center space-x-2 cursor-pointer shadow-sm group ${
-                hasAlerts 
-                  ? 'border-red-200 bg-red-600 hover:bg-red-700 text-white focus:ring-4 focus:ring-red-100 shadow-md animate-pulse' 
-                  : 'border-slate-200 bg-white hover:bg-slate-50 text-[#192F28]'
-              }`}
-              title={hasAlerts ? "Você possui alertas clínicos pendentes" : "Nenhum alerta pendente"}
-            >
-              <AlertTriangle className={`h-4 w-4 sm:h-5 sm:w-5 shrink-0 group-hover:scale-110 transition-transform ${hasAlerts ? 'text-white' : 'text-[#192F28]'}`} />
-              <span className="hidden sm:inline">ALERTA CLÍNICO</span>
-              <span className="sm:hidden">ALERTA</span>
-            </button>
-
           </div>
 
         </header>
@@ -401,6 +414,7 @@ export default function App() {
           {activeTab === 'agenda' && (
             <Agenda 
               onNavigate={handleNavigateWithParams}
+              initialOpenNewModal={openNewAppointmentParam}
               onRefreshDashboard={handleRefreshAll} 
               triggerRefresh={triggerCount} 
             />

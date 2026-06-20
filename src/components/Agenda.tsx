@@ -8,9 +8,10 @@ interface AgendaProps {
   onRefreshDashboard: () => void;
   onNavigate?: (tab: string, patientId?: string, draft?: any) => void;
   triggerRefresh: number;
+  initialOpenNewModal?: boolean;
 }
 
-export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh }: AgendaProps) {
+export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh, initialOpenNewModal }: AgendaProps) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   
@@ -57,6 +58,13 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh 
       setConsultationPrice(doc?.consultation_price ? doc.consultation_price.toFixed(2) : '350.00');
     }
   }, [appointmentType, selectedPatientId, patients, showForm]);
+
+  useEffect(() => {
+    if (initialOpenNewModal) {
+      setEditingAppointmentId(null);
+      setShowForm(true);
+    }
+  }, [initialOpenNewModal]);
 
   useEffect(() => {
     const fetchedPatients = dataManager.getPatients();
@@ -428,21 +436,6 @@ export default function Agenda({ onRefreshDashboard, onNavigate, triggerRefresh 
           >
             <CalendarPlus className="h-4 w-4" />
             <span>Exportar para Google Calendar</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              setEditingAppointmentId(null);
-              setShowForm(!showForm);
-              // Default select patient if empty
-              if (!selectedPatientId && patients.length > 0) {
-                setSelectedPatientId(patients[0].id);
-              }
-            }}
-            className="bg-[#C1E2A4] text-slate-900 border border-[#b0d292] font-semibold text-sm px-4 py-2 rounded-lg hover:bg-[#b0d292] transition-colors flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Novo Agendamento</span>
           </button>
         </div>
       </div>

@@ -31,12 +31,6 @@ export default function AlertCenter({ onNavigate, triggerRefresh }: AlertCenterP
     <div className="space-y-6 font-sans">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => onNavigate('dashboard')}
-            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-slate-600 cursor-pointer shadow-sm transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
               <AlertCircle className="h-6 w-6 text-red-500" />

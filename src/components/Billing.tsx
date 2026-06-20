@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Clock, Plus, Receipt, Landmark, Sparkles, Check, CheckCircle2, ChevronRight } from 'lucide-react';
+import { DollarSign, Clock, Plus, Receipt, Landmark, Sparkles, Check, CheckCircle2, ChevronRight, BarChart3, Search, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Billing as BillingType, Patient, dataManager } from '../data';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface BillingProps {
   onRefreshDashboard: () => void;
@@ -24,6 +25,29 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState('');
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+
+  // Chart Data calculation (Last 6 Months)
+  const chartData = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const yearMonth = d.toISOString().substring(0, 7);
+    
+    const monthBills = billingList.filter(b => b.due_date.substring(0, 7) === yearMonth);
+    const paid = monthBills.filter(b => b.status === 'paid').reduce((sum, b) => sum + b.amount, 0);
+    const pending = monthBills.filter(b => b.status === 'pending').reduce((sum, b) => sum + b.amount, 0);
+    
+    if (paid > 0 || pending > 0) {
+      chartData.push({
+        name: d.toLocaleDateString('pt-BR', { month: 'short' }).charAt(0).toUpperCase() + d.toLocaleDateString('pt-BR', { month: 'short' }).slice(1),
+        Recebido: paid,
+        Pendente: pending,
+      });
+    }
+  }
 
   // Handle draft
   useEffect(() => {
@@ -100,6 +124,17 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
   const totalPaid = billingList.filter(b => b.status === 'paid').reduce((acc, b) => acc + b.amount, 0);
   const totalPending = billingList.filter(b => b.status === 'pending').reduce((acc, b) => acc + b.amount, 0);
 
+  // Filter
+  const filteredBillingList = billingList.filter(bill => {
+    const patientName = getPatientName(bill.patient_id).toLowerCase();
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = patientName.includes(searchLower) || bill.id.includes(searchLower);
+    
+    if (statusFilter !== 'all' && bill.status !== statusFilter) return false;
+    
+    return matchesSearch;
+  });
+
   return (
     <div className="space-y-8 font-sans">
       
@@ -140,20 +175,80 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
         </button>
       </div>
 
-      {/* KPI stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold">Faturamento Bruto</span>
-          <span className="text-2xl font-serif text-[#192F28] font-bold block pt-1">R$ {totalInvoiced.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+      {/* KPIs & Chart Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* KPI stats */}
+        <div className="lg:col-span-1 flex flex-col gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
+              <Landmark className="h-4 w-4 text-emerald-600" />
+              <span>Receita Recebida</span>
+            </span>
+            <span className="text-3xl font-serif text-[#192F28] font-bold block pt-2">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-amber-500" />
+              <span>Saldo Pendente</span>
+            </span>
+            <span className="text-3xl font-serif text-[#192F28] font-bold block pt-2">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold">Total Recebido</span>
-          <span className="text-2xl font-serif text-emerald-650 font-bold block pt-1">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+
+        {/* Chart */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-2 text-slate-800 font-bold">
+              <BarChart3 className="h-5 w-5 text-indigo-500" />
+              <span>Fluxo de Caixa (Últimos Meses)</span>
+            </div>
+            <div className="flex items-center space-x-4 text-xs font-semibold text-slate-500">
+              <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-[#192F28] mr-1.5"></div> Recebido</div>
+              <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-amber-400 mr-1.5"></div> Pendente</div>
+            </div>
+          </div>
+          <div className="h-48 w-full">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barGap={2} barSize={24}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                  <RechartsTooltip
+                    cursor={{ fill: '#f8fafc' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-3 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 min-w-[150px]">
+                            <p className="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-2">{label}</p>
+                            {payload.map((entry: any, index: number) => (
+                              <div key={index} className="flex justify-between text-sm py-1">
+                                <div className="flex items-center">
+                                  <div className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: entry.color }}></div>
+                                  <span className="text-slate-600 font-medium">{entry.name}</span>
+                                </div>
+                                <span className="font-bold text-slate-900 ml-4">R$ {entry.value.toLocaleString('pt-BR')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="Recebido" fill="#192F28" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Pendente" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm italic">
+                Sem dados de faturamento para exibir
+              </div>
+            )}
+          </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold">Saldo Pendente</span>
-          <span className="text-2xl font-serif text-[#192F28] font-bold block pt-1">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-        </div>
+
       </div>
 
       {/* Modal / Overlay Form */}
@@ -294,8 +389,43 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
 
       {/* Invoice Table History */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-200 bg-slate-50/50">
+        <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h3 className="font-serif text-[#192F28] font-bold text-base">Histórico de Transações e Liquidação</h3>
+          
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar paciente ou ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] bg-white text-slate-900"
+              />
+            </div>
+            
+            <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setStatusFilter('paid')}
+                className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${statusFilter === 'paid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pagas
+              </button>
+              <button
+                onClick={() => setStatusFilter('pending')}
+                className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${statusFilter === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pendentes
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -311,12 +441,18 @@ export default function Billing({ onRefreshDashboard, triggerRefresh, initialDra
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {billingList.length === 0 ? (
+              {filteredBillingList.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center p-8 text-slate-400 italic">Histórico de cobrança vazio.</td>
+                  <td colSpan={6} className="text-center p-12">
+                    <div className="flex flex-col items-center justify-center text-slate-400">
+                      <Receipt className="w-12 h-12 mb-4 text-slate-200" />
+                      <p className="text-sm font-semibold text-slate-500">Nenhuma transação encontrada</p>
+                      <p className="text-xs mt-1">Nenhum registro corresponde aos filtros atuais.</p>
+                    </div>
+                  </td>
                 </tr>
               ) : (
-                billingList.map((bill) => (
+                filteredBillingList.map((bill) => (
                   <tr key={bill.id} className="hover:bg-slate-50/55 transition-colors text-slate-700 font-medium">
                     <td className="p-4">
                       <div className="font-serif font-bold text-sm text-[#192F28]">{getPatientName(bill.patient_id)}</div>
