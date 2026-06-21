@@ -145,7 +145,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               )}
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xs font-semibold text-slate-400 mb-1">Mês anterior <span className="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded ml-1 font-bold">↗ 12.3%</span></span>
+              <span className="text-xs font-semibold text-slate-400 mb-1">Mês anterior <span className="text-[#192F28]/70 bg-[#C1E2A4]/20 px-1.5 py-0.5 rounded ml-1 font-bold">↗ 12.3%</span></span>
             </div>
           </div>
 
@@ -335,14 +335,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {/* Right Column: Alerts First, then Breakdown */}
         <div className="space-y-6">
           {/* Central de Alertas Summary */}
-          <div className={`p-6 rounded-3xl border shadow-sm ${crisisAlerts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <div className={`p-6 rounded-3xl border shadow-sm ${crisisAlerts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-[#C1E2A4]/20 border-[#C1E2A4]/50'}`}>
              <div className="flex items-center space-x-3 mb-3">
-               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${crisisAlerts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${crisisAlerts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-[#C1E2A4] text-[#192F28]'}`}>
                  <AlertCircle className="w-5 h-5" />
                </div>
                <div>
-                  <h3 className={`font-bold ${crisisAlerts.length > 0 ? 'text-red-900' : 'text-emerald-900'}`}>Alertas Clínicos</h3>
-                  <p className={`text-sm ${crisisAlerts.length > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                  <h3 className={`font-bold ${crisisAlerts.length > 0 ? 'text-red-900' : 'text-[#192F28]'}`}>Alertas Clínicos</h3>
+                  <p className={`text-sm ${crisisAlerts.length > 0 ? 'text-red-700' : 'text-[#192F28]/80'}`}>
                     {crisisAlerts.length} casos de atenção
                   </p>
                </div>
@@ -356,7 +356,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                  <ArrowRight className="w-4 h-4" />
                </button>
              ) : (
-                <div className="text-xs text-emerald-600 mt-2 font-medium">Todos os pacientes estão estáveis.</div>
+                <div className="text-xs text-[#192F28] mt-2 font-medium">Todos os pacientes estão estáveis.</div>
              )}
           </div>
 
@@ -451,13 +451,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded bg-slate-100 text-slate-700">
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${app.type === 'online' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${app.type === 'online' ? 'bg-[#C1E2A4]' : 'bg-orange-500'}`}></span>
                       {app.type === 'online' ? 'Online' : 'Presencial'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                      <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md ${
-                        app.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                        app.status === 'completed' ? 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/30' :
                         app.status === 'confirmed' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
                         'bg-slate-50 text-slate-700 border border-slate-200'
                       }`}>

@@ -149,7 +149,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -185,7 +185,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
-              <Landmark className="h-4 w-4 text-emerald-600" />
+              <Landmark className="h-4 w-4 text-[#192F28]" />
               <span>Receita Recebida</span>
             </span>
             <span className="text-3xl font-serif text-[#192F28] font-bold block pt-2">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
@@ -276,7 +276,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div className="flex items-center space-x-2 text-slate-900">
-                  <DollarSign className="h-5 w-5 text-emerald-500" />
+                  <DollarSign className="h-5 w-5 text-[#192F28]/70" />
                   <h3 className="font-bold text-lg">Registrar Nova Cobrança de Paciente</h3>
                 </div>
                 <button 
@@ -374,7 +374,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                     type="checkbox"
                     checked={autoEmitNfe}
                     onChange={(e) => setAutoEmitNfe(e.target.checked)}
-                    className="mt-1 accent-emerald-500 w-4 h-4 rounded border-slate-300"
+                    className="mt-1 accent-[#192F28] w-4 h-4 rounded border-slate-300"
                   />
                   <div className="-mt-0.5">
                     <span className="block text-sm font-bold text-slate-700">Emitir NFS-e automaticamente após pagamento</span>
@@ -485,8 +485,8 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                       {new Date(bill.due_date).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full font-mono text-[9px] font-bold uppercase ${bill.status === 'paid' ? 'bg-status-success/15 text-status-success' : 'bg-status-danger/10 text-status-danger'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${bill.status === 'paid' ? 'bg-status-success' : 'bg-status-danger animate-pulse'}`}></span>
+                      <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full font-mono text-[9px] font-bold uppercase ${bill.status === 'paid' ? 'bg-[#C1E2A4]/20 text-[#192F28]' : 'bg-status-danger/10 text-status-danger'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${bill.status === 'paid' ? 'bg-[#192F28]' : 'bg-status-danger animate-pulse'}`}></span>
                         <span>{bill.status === 'paid' ? 'Liquidado' : 'Pendente'}</span>
                       </span>
                     </td>
@@ -507,7 +507,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                           Simular Pix (Compensar)
                         </button>
                       ) : (
-                        <div className="text-[10px] text-emerald-700 font-mono font-bold flex items-center justify-end space-x-1">
+                        <div className="text-[10px] text-[#192F28] font-mono font-bold flex items-center justify-end space-x-1">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           <span>Conciliado</span>
                         </div>

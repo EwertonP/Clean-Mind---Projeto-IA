@@ -254,7 +254,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                       )}
                       
                       <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <span className="inline-flex items-center space-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-semibold border border-green-100">
+                        <span className="inline-flex items-center space-x-1 bg-[#C1E2A4]/20 text-[#192F28] px-3 py-1 rounded-full text-xs font-semibold border border-[#C1E2A4]/50">
                           <Building className="w-3 h-3" />
                           <span>{profileData.specialty}</span>
                         </span>
@@ -529,8 +529,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
               </div>
               <div>
                  {googleConnected ? (
-                    <span className="text-status-success font-semibold px-4 py-2 border border-green-200 bg-green-50 rounded-lg flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500 block"></span>
+                    <span className="text-[#192F28] font-semibold px-4 py-2 border border-[#C1E2A4]/50 bg-[#C1E2A4]/20 rounded-lg flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-[#192F28] block"></span>
                       <span>Conectado</span>
                     </span>
                  ) : (
@@ -556,8 +556,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
               </div>
               <div>
                 {googleConnected ? (
-                    <span className="text-status-success font-semibold px-4 py-2 border border-green-200 bg-green-50 rounded-lg flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500 block"></span>
+                    <span className="text-[#192F28] font-semibold px-4 py-2 border border-[#C1E2A4]/50 bg-[#C1E2A4]/20 rounded-lg flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-[#192F28] block"></span>
                       <span>Conectado</span>
                     </span>
                  ) : (
@@ -573,8 +573,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
-                  <MessageSquare className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 rounded-xl bg-[#C1E2A4] flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-6 h-6 text-[#192F28]" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">API do WhatsApp</h3>
@@ -582,7 +582,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                 </div>
               </div>
               <div>
-                <button className="px-5 py-2.5 bg-white border border-green-300 text-green-700 hover:bg-green-50 rounded-lg text-sm font-semibold transition cursor-pointer flex items-center space-x-2">
+                <button className="px-5 py-2.5 bg-[#C1E2A4] border border-[#C1E2A4] text-[#192F28] hover:bg-[#b0d292] rounded-lg text-sm font-semibold transition cursor-pointer flex items-center space-x-2">
                    <span>Configurar API</span>
                 </button>
               </div>
@@ -594,8 +594,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
           <div className="space-y-6">
              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center space-x-3 mb-6 border-b border-slate-100 pb-4">
-                   <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                     <MessageSquare className="w-5 h-5 text-green-600" />
+                   <div className="w-10 h-10 rounded-lg bg-[#C1E2A4] flex items-center justify-center">
+                     <MessageSquare className="w-5 h-5 text-[#192F28]" />
                    </div>
                    <div>
                      <h3 className="font-bold text-lg text-slate-900">Mensagens do WhatsApp</h3>

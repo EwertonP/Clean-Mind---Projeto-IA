@@ -201,7 +201,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -654,8 +654,8 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                       </div>
                       <div className="flex flex-col justify-center">
                        <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${isInactive ? 'bg-slate-300' : 'bg-emerald-500'}`} title={isInactive ? 'Inativo' : 'Ativo'} />
-                          <span className="group-hover:text-emerald-700 transition-colors">{patient.name}</span>
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${isInactive ? 'bg-slate-300' : 'bg-[#C1E2A4]'}`} title={isInactive ? 'Inativo' : 'Ativo'} />
+                          <span className="group-hover:text-[#192F28]/70 transition-colors">{patient.name}</span>
                           {!isInactive && hasNoRecentAppt && (
                             <div title="Sem agendamento há mais de 30 dias" className="flex items-center justify-center text-amber-500 bg-amber-50/80 p-1 rounded-md border border-amber-100/50">
                               <Clock className="w-3.5 h-3.5" />
@@ -670,7 +670,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                               if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
                               else if (norm.includes('acompanhamento')) colorClass = 'bg-sky-100 text-sky-700 border-sky-200';
                               else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
-                              else if (norm.includes('alta')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                              else if (norm.includes('alta')) colorClass = 'bg-[#C1E2A4]/40 text-[#192F28] border-[#C1E2A4]/50';
                               else colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
                               
                               return (
@@ -709,7 +709,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   <td className="py-4 px-6 text-center text-sm font-bold text-slate-900">
                     <div className="flex items-center justify-center space-x-1.5">
                       <span>{completedSessions}</span>
-                      {fakeData.trend === 'up' && <span title="Alta frequência recente"><TrendingUp className="w-4 h-4 text-emerald-500" /></span>}
+                      {fakeData.trend === 'up' && <span title="Alta frequência recente"><TrendingUp className="w-4 h-4 text-[#192F28]/70" /></span>}
                       {fakeData.trend === 'down' && <span title="Baixa frequência recente"><TrendingDown className="w-4 h-4 text-rose-500" /></span>}
                       {fakeData.trend === 'neutral' && <span title="Frequência estável"><Minus className="w-4 h-4 text-slate-300" /></span>}
                     </div>
@@ -735,14 +735,14 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                         target="_blank"
                         rel="noreferrer"
                         title="Enviar WhatsApp"
-                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                        className="p-1.5 text-[#192F28] hover:bg-[#C1E2A4]/20 rounded-md transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <MessageCircle className="w-4 h-4" />
                       </a>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setSelectedPatientForDetail(patient); }}
-                        className="text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors uppercase tracking-wider title-case cursor-pointer"
+                        className="text-sm font-medium text-slate-700 hover:text-[#192F28]/70 transition-colors uppercase tracking-wider title-case cursor-pointer"
                       >
                         Perfil
                       </button>

@@ -80,7 +80,7 @@ export const checkGoogleCalendarAvailability = async (
   }
 };
 
-export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, patientName: string, doctorName: string, room?: string, doctorToken?: string): Promise<string | undefined> => {
+export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, patientName: string, doctorName: string, room?: string, doctorToken?: string, patientEmail?: string): Promise<{ eventId: string, meetLink?: string } | undefined> => {
   const tokenToUse = doctorToken || cachedAccessToken;
   
   if (!tokenToUse) {
@@ -90,25 +90,41 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
   
   const startTime = new Date(`${appStatus.date}T${appStatus.start_time}:00`);
   const durationInMinutes = appStatus.duration || 60;
-  const endTime = new Date(startTime.getTime() + durationInMinutes * 60 * 1000); // dynamic duration
+  const endTime = new Date(startTime.getTime() + durationInMinutes * 60 * 1000);
 
   const prefix = appStatus.is_return ? 'Retorno' : 'Novo Atendimento';
-  const event = {
+  
+  const event: any = {
     summary: `${doctorName} / ${prefix} / ${patientName}`,
     description: `Consulta agendada pelo sistema CleanMind.\n\nPaciente: ${patientName}\nData: ${appStatus.date?.split('-').reverse().join('/')}\nHorário: ${appStatus.start_time}\n${room ? `Sala: ${room}\n` : ''}`,
     start: {
       dateTime: startTime.toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
     end: {
       dateTime: endTime.toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     },
   };
+
+  if (patientEmail) {
+    event.attendees = [{ email: patientEmail }];
+  }
+
+  if (appStatus.type === 'online') {
+    event.conferenceData = {
+      createRequest: {
+        requestId: `cleanmind-${Date.now()}`,
+        conferenceSolutionKey: { type: "hangoutsMeet" }
+      }
+    };
+  }
 
   try {
     const isUpdate = !!appStatus.google_event_id;
     const url = isUpdate 
-      ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${appStatus.google_event_id}`
-      : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+      ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${appStatus.google_event_id}?conferenceDataVersion=1`
+      : 'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1';
     const method = isUpdate ? 'PATCH' : 'POST';
 
     const res = await fetch(url, {
@@ -131,7 +147,14 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
     }
     const data = await res.json();
     console.log("Calendar event synced:", data);
-    return data.id;
+    
+    let meetLink = undefined;
+    if (data.conferenceData && data.conferenceData.entryPoints) {
+      const videoEntry = data.conferenceData.entryPoints.find((ep: any) => ep.entryPointType === 'video');
+      if (videoEntry) meetLink = videoEntry.uri;
+    }
+
+    return { eventId: data.id, meetLink };
   } catch (e) {
     console.error("Failed to sync to calendar:", e);
   }
@@ -164,44 +187,33 @@ export const sendAppointmentEmail = async (
   emailTo: string, 
   patientName: string, 
   date: string, 
-  time: string
+  time: string,
+  type: string,
+  meetLink?: string,
+  address?: string,
+  doctorName?: string
 ) => {
-  if (!cachedAccessToken) {
-    console.warn("Google Workspace not connected (missing token)");
-    return;
-  }
-
-  const subject = `Agendamento Confirmado - CleanMind`;
-  const message = `Olá, ${patientName},\n\nSua consulta foi agendada para o dia ${date} às ${time}.\n\nPara alterações, por favor entre em contato com seu profissional.\n\nAtenciosamente,\nEquipe CleanMind`;
-  
-  const utf8Subject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
-  const messageParts = [
-    `To: ${emailTo}`,
-    `Subject: ${utf8Subject}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=utf-8',
-    '',
-    message
-  ];
-  
-  const emailRaw = btoa(unescape(encodeURIComponent(messageParts.join('\n')))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  
   try {
-    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    const res = await fetch('/api/send-appointment', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${cachedAccessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ raw: emailRaw })
+      body: JSON.stringify({
+        email: emailTo,
+        patientName,
+        date,
+        time,
+        type,
+        meetLink,
+        address,
+        doctorName
+      })
     });
-    
     if (!res.ok) {
-      console.error("Failed to send email:", await res.text());
-    } else {
-      console.log("Email sent successfully!");
+      console.error("Failed to send appointment email from server");
     }
   } catch (e) {
-    console.error("Failed to send email:", e);
+    console.error("Failed to send appointment email:", e);
   }
 };

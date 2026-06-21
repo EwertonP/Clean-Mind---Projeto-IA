@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, User, Phone as PhoneIcon, ArrowRight, CornerDownRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Doctor, dataManager } from '../data';
 import { auth } from '../firebase';
-import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
 import { maskPhone } from '../utils/masks';
 
 interface AuthProps {
@@ -25,6 +25,59 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
 
+  // Verification
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verificationCodeInput, setVerificationCodeInput] = useState('');
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyCode = params.get('verify');
+    const emailParam = params.get('email');
+    if (verifyCode && emailParam) {
+      setVerificationEmail(emailParam);
+      setShowVerification(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      handleVerifyCodeAuto(emailParam, verifyCode);
+    }
+  }, []);
+
+  const handleVerifyCodeAuto = async (email: string, code: string) => {
+    setIsVerifyingCode(true);
+    setErrorMsg('');
+    try {
+      const { collection, query, where, getDocs, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      
+      const q = query(collection(db, 'doctors'), where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        throw new Error('Usuário não encontrado.');
+      }
+      
+      const docSnap = querySnapshot.docs[0];
+      const data = docSnap.data();
+      
+      if (data.verification_code === code) {
+        await updateDoc(docSnap.ref, { is_verified: true });
+        
+        const updatedDoc = { ...data, is_verified: true, id: docSnap.id } as Doctor;
+        localStorage.setItem('cm_doctor_session', updatedDoc.id);
+        
+        setShowVerification(false);
+        setIsVerifyingCode(false);
+        onAuthSuccess(updatedDoc);
+      } else {
+        throw new Error('Link de verificação inválido ou expirado.');
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Falha ao verificar link.');
+      setIsVerifyingCode(false);
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) return;
@@ -39,6 +92,14 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       const { db } = await import('../firebase');
       const docRef = await getDoc(doc(db, 'doctors', user.uid));
       let currentDoc = docRef.exists() ? (docRef.data() as Doctor) : null;
+
+      if (currentDoc && currentDoc.is_verified === false) {
+        setLoading(false);
+        setVerificationEmail(loginEmail);
+        setShowVerification(true);
+        await signOut(auth);
+        return;
+      }
 
       if (!currentDoc) {
         // Se autenticou no firebase mas não tem documento
@@ -74,6 +135,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
     try {
       const { user } = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
+      
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       const newDoc: Doctor = {
         id: user.uid,
@@ -84,16 +147,32 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         specialty: '',
         role: 'admin',
         is_configured: false,
+        is_verified: false,
+        verification_code: verificationCode,
         created_at: new Date().toISOString()
       };
 
       const { doc, setDoc } = await import('firebase/firestore');
       const { db } = await import('../firebase');
       await setDoc(doc(db, 'doctors', user.uid), newDoc);
-      localStorage.setItem('cm_doctor_session', newDoc.id);
+
+      // Envia o e-mail via backend Resend
+      const verifyLink = `${window.location.origin}?verify=${verificationCode}&email=${encodeURIComponent(regEmail)}`;
+      
+      try {
+        await fetch('/api/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: regEmail, code: verificationCode, link: verifyLink, name: regName })
+        });
+      } catch (err) {
+        console.error('Falha ao enviar e-mail:', err);
+      }
 
       setLoading(false);
-      onAuthSuccess(newDoc);
+      setVerificationEmail(regEmail);
+      setShowVerification(true);
+      await signOut(auth);
     } catch (e: any) {
       setLoading(false);
       if (e.code === 'auth/email-already-in-use') {
@@ -149,6 +228,47 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     }
   };
 
+  const handleVerifyCode = async () => {
+    if (verificationCodeInput.length !== 6) {
+      setErrorMsg('O código deve ter 6 dígitos.');
+      return;
+    }
+    
+    setIsVerifyingCode(true);
+    setErrorMsg('');
+
+    try {
+      const { collection, query, where, getDocs, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      
+      const q = query(collection(db, 'doctors'), where('email', '==', verificationEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        throw new Error('Usuário não encontrado.');
+      }
+      
+      const docSnap = querySnapshot.docs[0];
+      const data = docSnap.data();
+      
+      if (data.verification_code === verificationCodeInput) {
+        await updateDoc(docSnap.ref, { is_verified: true });
+        
+        const updatedDoc = { ...data, is_verified: true, id: docSnap.id } as Doctor;
+        localStorage.setItem('cm_doctor_session', updatedDoc.id);
+        
+        setShowVerification(false);
+        setIsVerifyingCode(false);
+        onAuthSuccess(updatedDoc);
+      } else {
+        throw new Error('Código incorreto.');
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Falha ao verificar código.');
+      setIsVerifyingCode(false);
+    }
+  };
+
   const GoogleLogo = () => (
     <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
       <path
@@ -176,7 +296,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         
         {/* Logo Area */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-700 flex items-center justify-center text-white font-serif font-bold text-2xl shadow-xl mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#192F28] flex items-center justify-center text-white font-serif font-bold text-2xl shadow-xl mb-4">
             C
           </div>
           <h1 className="text-3xl font-serif font-semibold text-slate-900 tracking-tight">CleanMind</h1>
@@ -188,21 +308,34 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           
           {showVerification ? (
             <div className="p-8 sm:p-10 flex flex-col items-center text-center animate-fade-in">
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-6">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-16 h-16 bg-[#C1E2A4]/20 text-[#192F28] rounded-full flex items-center justify-center mb-6">
+                {isVerifyingCode ? (
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                ) : (
+                  <Mail className="w-8 h-8" />
+                )}
               </div>
-              <h2 className="text-2xl font-serif text-slate-900 font-medium mb-3">Verifique seu e-mail</h2>
-              <p className="text-sm text-slate-600 leading-relaxed mb-8">
-                Enviamos um link de verificação para <strong className="text-slate-900">{regEmail}</strong>. 
-                Por favor, clique no link recebido para concluir o seu cadastro.
+              <h2 className="text-2xl font-serif text-slate-900 font-medium mb-3">
+                {isVerifyingCode ? 'Verificando...' : 'Verifique seu e-mail'}
+              </h2>
+              <p className="text-sm text-slate-600 leading-relaxed mb-6">
+                Enviamos um e-mail de verificação para <strong className="text-slate-900">{verificationEmail}</strong>. <br/><br/>
+                Por favor, clique no botão enviado no seu e-mail para validar seu acesso.
               </p>
+
+              {errorMsg && (
+                <div className="w-full p-3 mb-6 bg-rose-50 text-rose-600 text-sm font-medium rounded-xl flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                  {errorMsg}
+                </div>
+              )}
               
               <button
                 onClick={() => {
                   setShowVerification(false);
                   setActiveTab('login');
                 }}
-                className="text-sm text-emerald-700 hover:text-emerald-800 font-medium transition-colors"
+                className="w-full h-12 border border-[#C1E2A4]/50 text-[#192F28] hover:bg-[#C1E2A4]/20 font-medium rounded-xl transition-all flex items-center justify-center mb-4"
               >
                 Voltar para o Login
               </button>
@@ -214,23 +347,23 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                 <button
                   onClick={() => { setActiveTab('login'); setErrorMsg(''); }}
                   className={`flex-1 py-5 text-sm font-medium transition-colors relative ${
-                    activeTab === 'login' ? 'text-emerald-800' : 'text-slate-400 hover:text-slate-600'
+                    activeTab === 'login' ? 'text-[#192F28]' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
                   Fazer Login
                   {activeTab === 'login' && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600" />
+                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#192F28]" />
                   )}
                 </button>
                 <button
                   onClick={() => { setActiveTab('register'); setErrorMsg(''); }}
                   className={`flex-1 py-5 text-sm font-medium transition-colors relative ${
-                    activeTab === 'register' ? 'text-emerald-800' : 'text-slate-400 hover:text-slate-600'
+                    activeTab === 'register' ? 'text-[#192F28]' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
                   Cadastrar-se
                   {activeTab === 'register' && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600" />
+                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#192F28]" />
                   )}
                 </button>
               </div>
@@ -251,7 +384,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             value={loginEmail}
                             onChange={(e) => setLoginEmail(e.target.value)}
                             placeholder="seu@email.com"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -266,13 +399,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             value={loginPassword}
                             onChange={(e) => setLoginPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
                         </div>
                       </div>
 
                       <div className="flex justify-end mt-1">
-                        <a href="#" className="text-xs text-slate-500 hover:text-emerald-700 hover:underline transition-colors">
+                        <a href="#" className="text-xs text-slate-500 hover:text-[#192F28]/70 hover:underline transition-colors">
                           Esqueceu sua senha?
                         </a>
                       </div>
@@ -288,7 +421,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                          className="w-full bg-[#192F28] hover:bg-[#192F28]/90 text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                           {loading ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
@@ -334,7 +467,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             value={regName}
                             onChange={(e) => setRegName(e.target.value)}
                             placeholder="Dr. Nome Sobrenome"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -349,7 +482,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             value={regEmail}
                             onChange={(e) => setRegEmail(e.target.value)}
                             placeholder="seu@email.com"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -364,7 +497,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             value={regPhone}
                             onChange={(e) => setRegPhone(maskPhone(e.target.value))}
                             placeholder="(00) 00000-0000"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -379,7 +512,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                             value={regPassword}
                             onChange={(e) => setRegPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-sm text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -395,7 +528,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                          className="w-full bg-[#192F28] hover:bg-[#192F28]/90 text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                           {loading ? (
                             <Loader2 className="h-5 w-5 animate-spin" />

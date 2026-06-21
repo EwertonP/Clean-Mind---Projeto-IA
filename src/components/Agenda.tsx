@@ -174,16 +174,25 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     if (isGoogleCalendarConnected() || doctorToken) {
       const doctorName = doc ? doc.name : 'Médico';
       const actualRoom = newApp.type === 'presencial' ? newApp.room : undefined;
-      const gEventId = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom, doctorToken);
-      if (gEventId && !newApp.google_event_id) {
-        newApp = dataManager.updateAppointment(newApp.id, { google_event_id: gEventId });
+      const pat = patients.find(p => p.id === selectedPatientId);
+      const syncResult = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom, doctorToken, pat?.email);
+      if (syncResult?.eventId && !newApp.google_event_id) {
+        newApp = dataManager.updateAppointment(newApp.id, { google_event_id: syncResult.eventId });
       }
       
-      const pat = patients.find(p => p.id === selectedPatientId);
       if (pat && pat.email) {
         const confirmed = window.confirm(`Deseja enviar um email de confirmação para ${pat.email}?`);
         if (confirmed) {
-           sendAppointmentEmail(pat.email, pat.name, newApp.date, newApp.start_time).then(() => {
+           sendAppointmentEmail(
+             pat.email, 
+             pat.name, 
+             newApp.date, 
+             newApp.start_time, 
+             newApp.type, 
+             syncResult?.meetLink, 
+             actualRoom ? `${doctorName} - ${actualRoom}` : doctorName, 
+             doctorName
+           ).then(() => {
               console.log('Email sent request complete');
            });
         }
@@ -327,9 +336,9 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
 
   const getAppointmentColorStyle = (isReturn: boolean | undefined) => {
     if (isReturn) {
-      return 'bg-emerald-700 text-white';
+      return 'bg-[#192F28] text-white';
     }
-    return 'bg-[#C1E2A4] text-emerald-950';
+    return 'bg-[#C1E2A4] text-[#192F28]';
   };
 
   const getWeekDays = (date: Date) => {
@@ -424,7 +433,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -482,7 +491,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div className="flex items-center space-x-2 text-slate-900">
-                  <CalendarIcon className="h-5 w-5 text-emerald-500" />
+                  <CalendarIcon className="h-5 w-5 text-[#192F28]/70" />
                   <h3 className="font-bold text-lg">{editingAppointmentId ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
                 </div>
                 <button 
@@ -496,11 +505,11 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               
               <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* WhatsApp Banner */}
-              <div className="bg-emerald-50 border border-emerald-500/30 rounded-xl p-4 flex items-start space-x-3">
-                <MessageSquare className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="bg-[#C1E2A4]/20 border border-[#C1E2A4]/30 rounded-xl p-4 flex items-start space-x-3">
+                <MessageSquare className="h-5 w-5 text-[#192F28] shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-emerald-800 font-bold text-sm">Integração WhatsApp Nativa</h4>
-                  <p className="text-emerald-600/80 text-xs mt-0.5">Confirmação automática enviada ao paciente + Lembrete 24h antes + Link para reagendamento.</p>
+                  <h4 className="text-[#192F28] font-bold text-sm">Integração WhatsApp Nativa</h4>
+                  <p className="text-[#192F28]/80 text-xs mt-0.5">Confirmação automática enviada ao paciente + Lembrete 24h antes + Link para reagendamento.</p>
                 </div>
               </div>
 
@@ -638,13 +647,13 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                 <div className="space-y-3 bg-white rounded-lg p-4 border border-blue-100">
                   <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center space-x-3">
-                      <MessageSquare className="h-4 w-4 text-emerald-500" />
+                      <MessageSquare className="h-4 w-4 text-[#192F28]/70" />
                       <div>
                         <span className="block text-sm font-bold text-slate-700">Enviar confirmação via WhatsApp</span>
                         <span className="block text-xs text-slate-500">Mensagem automática com data, hora e link</span>
                       </div>
                     </div>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500" />
+                    <input type="checkbox" defaultChecked className="w-4 h-4 text-[#192F28]/70 border-slate-300 rounded focus:ring-[#C1E2A4]" />
                   </label>
                   <div className="border-t border-slate-100"></div>
                   <label className="flex items-center justify-between cursor-pointer pt-1">
@@ -720,7 +729,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
         <div className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           
           <div className="flex items-center space-x-4">
-            <div className="bg-[#e4f3d2] text-emerald-800 rounded-xl px-4 py-2 flex flex-col items-center justify-center min-w-[64px]">
+            <div className="bg-[#e4f3d2] text-[#192F28] rounded-xl px-4 py-2 flex flex-col items-center justify-center min-w-[64px]">
                <span className="text-xs font-bold uppercase">{getMonthShortName(currentDate)}</span>
                <span className="text-xl font-bold leading-tight">{currentDate.getDate()}</span>
             </div>
@@ -761,7 +770,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
           <div className="flex space-x-6 overflow-x-auto no-scrollbar">
             <button 
               onClick={() => setCalendarFilter('all')}
-              className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === 'all' ? 'border-[#8ebf5c] text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === 'all' ? 'border-[#8ebf5c] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Todos os médicos
             </button>
@@ -769,7 +778,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               <button 
                 key={doc.id}
                 onClick={() => setCalendarFilter(doc.id)}
-                className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === doc.id ? 'border-[#8ebf5c] text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === doc.id ? 'border-[#8ebf5c] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               >
                 Dr(a). {doc.name.split(' ')[0]}
               </button>
@@ -800,7 +809,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
             <>
               <div className="grid grid-cols-7 bg-[#e4f3d2] py-2.5 rounded-t-xl overflow-hidden border border-[#d1eca8] border-b-0">
                 {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
-                   <div key={d} className="text-center font-semibold text-sm text-emerald-800">{d}</div>
+                   <div key={d} className="text-center font-semibold text-sm text-[#192F28]">{d}</div>
                 ))}
               </div>
               
@@ -853,8 +862,8 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                    <div className="w-16 sm:w-20 shrink-0 border-r border-[#d1eca8]"></div>
                    {weekDays.map(day => (
                      <div key={day.name} className="flex-1 py-3 text-center border-r border-[#d1eca8] last:border-0">
-                        <span className="block text-xs sm:text-sm text-emerald-800/80 mb-1 font-semibold">{day.name}</span>
-                        <span className={`inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-sm font-semibold rounded-full ${day.active ? 'bg-slate-900 text-white shadow-sm' : 'text-emerald-900'}`}>
+                        <span className="block text-xs sm:text-sm text-[#192F28]/80 mb-1 font-semibold">{day.name}</span>
+                        <span className={`inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-sm font-semibold rounded-full ${day.active ? 'bg-slate-900 text-white shadow-sm' : 'text-[#192F28]'}`}>
                           {day.label}
                         </span>
                      </div>
@@ -937,7 +946,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                   <div className="flex items-center space-x-3 w-40">
                     <input 
                       type="checkbox" 
-                      className="w-4 h-4 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer" 
+                      className="w-4 h-4 text-[#192F28]/70 border-slate-300 rounded focus:ring-[#C1E2A4] cursor-pointer" 
                       checked={item.active} 
                       onChange={(e) => {
                         const newConfig = [...scheduleConfig];

@@ -357,7 +357,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -418,13 +418,13 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
           >
             <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
                <h3 className="font-bold text-lg text-slate-900 flex items-center space-x-2">
-                 <FileText className="h-5 w-5 text-emerald-500" />
+                 <FileText className="h-5 w-5 text-[#192F28]/70" />
                  <span>{formStep === 1 ? 'Selecione o Paciente' : formStep === 2 ? 'Tipo de Documento' : 'Nova Evolução e Prontuário'}</span>
                </h3>
                <div className="flex items-center space-x-4">
                  {formStep > 1 && selectedFormPatientId && (
                    <div className="flex bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 items-center space-x-2 text-sm">
-                     <User className="h-4 w-4 text-emerald-600" />
+                     <User className="h-4 w-4 text-[#192F28]" />
                      <span className="font-semibold text-slate-700">{getPatientName(selectedFormPatientId)}</span>
                    </div>
                  )}
@@ -450,8 +450,8 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                           onClick={() => { setSelectedFormPatientId(p.id); setFormStep(2); }}
                           className="bg-white hover:bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4 cursor-pointer text-center transition-all hover:border-[#C1E2A4] hover:shadow-md h-full group"
                         >
-                          <div className="bg-emerald-50 group-hover:bg-emerald-100 p-4 rounded-full transition-colors">
-                            <User className="h-8 w-8 text-emerald-600" />
+                          <div className="bg-[#C1E2A4]/20 group-hover:bg-[#C1E2A4]/40 p-4 rounded-full transition-colors">
+                            <User className="h-8 w-8 text-[#192F28]" />
                           </div>
                           <div>
                             <p className="font-bold text-slate-800 text-lg leading-tight">{p.name}</p>
@@ -529,7 +529,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                         Rascunho Editável
                       </span>
                     ) : (
-                      <span className="text-[10px] uppercase font-mono font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 flex items-center space-x-1">
+                      <span className="text-[10px] uppercase font-mono font-bold text-[#192F28] bg-[#C1E2A4]/20 px-2.5 py-1 rounded border border-[#C1E2A4]/50 flex items-center space-x-1">
                         <ShieldCheck className="h-3 w-3" />
                         <span>Assinado ICP-Brasil</span>
                       </span>
@@ -740,7 +740,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                       <span>{getRecordTypeLabel(record)}</span>
                     </div>
                   </div>
-                  <span className={`text-[8px] font-mono uppercase font-bold px-2 py-0.5 rounded mt-0.5 ${record.signature_status === 'signed_icp' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/40'}`}>
+                  <span className={`text-[8px] font-mono uppercase font-bold px-2 py-0.5 rounded mt-0.5 ${record.signature_status === 'signed_icp' ? 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/30' : 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/40'}`}>
                     {record.signature_status === 'signed_icp' ? 'Assinado' : 'Rascunho'}
                   </span>
                 </div>
@@ -761,14 +761,14 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleExportPDF(record); }}
-                      className="text-[#192F28] hover:text-emerald-600 flex items-center space-x-1 font-semibold transition-colors cursor-pointer"
+                      className="text-[#192F28] hover:text-[#192F28]/70 flex items-center space-x-1 font-semibold transition-colors cursor-pointer"
                       title="Exportar PDF"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Baixar PDF</span>
                     </button>
                     {record.signed_at && (
-                      <span className="text-emerald-600 font-semibold flex items-center space-x-0.5 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      <span className="text-[#192F28] font-semibold flex items-center space-x-0.5 bg-[#C1E2A4]/20 px-1.5 py-0.5 rounded">
                         <Check className="h-3 w-3" />
                         <span>Selo ICP</span>
                       </span>
@@ -921,7 +921,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               {(viewingRecord.evolution_text || (!viewingRecord.evolution_text && !viewingRecord.prontuario_text)) && (
                 <div className="bg-white p-6 rounded-xl border border-slate-200">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center space-x-2 border-b border-slate-100 pb-2">
-                    <FileText className="h-4 w-4 text-emerald-600" />
+                    <FileText className="h-4 w-4 text-[#192F28]" />
                     <span>Evolução Clínica / SOAP</span>
                   </h4>
                   <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
@@ -933,7 +933,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               {viewingRecord.prontuario_text && (
                 <div className="bg-white p-6 rounded-xl border border-slate-200">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center space-x-2 border-b border-slate-100 pb-2">
-                    <FileText className="h-4 w-4 text-emerald-600" />
+                    <FileText className="h-4 w-4 text-[#192F28]" />
                     <span>Prontuário Médico</span>
                   </h4>
                   <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">

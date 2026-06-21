@@ -19,6 +19,8 @@ export interface Doctor {
   specialty: string;
   admin_id?: string;
   role?: 'admin' | 'doctor';
+  is_verified?: boolean;
+  verification_code?: string;
   plan_type?: 'free' | 'premium' | 'pro';
   clinic_name?: string;
   clinic_address?: string;
