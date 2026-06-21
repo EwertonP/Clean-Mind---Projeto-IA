@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Brain, FileText, Lock, Sparkles, ShieldCheck, Heart, User, Send, ArrowRight, CornerDownRight, Check, AlertTriangle, CheckCircle2, Download, Hospital, Trash2, X, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Patient, DiaryEntry, MedicalRecord, dataManager } from '../data';
+import PatientAssessments from './PatientAssessments';
 import html2pdf from 'html2pdf.js';
 
 import { useStore } from '../store';
@@ -18,6 +19,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
   const patients = patientsStore;
   const historyRaw = medicalRecordsStore;
   const [filterPatientId, setFilterPatientId] = useState(initialPatientId || '');
+  const [activeTab, setActiveTab] = useState<'records' | 'assessments'>('records');
   const [selectedFormPatientId, setSelectedFormPatientId] = useState('');
   const [evolutionText, setEvolutionText] = useState('');
   const [prontuarioText, setProntuarioText] = useState('');
@@ -377,7 +379,10 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
             <span className="text-[14px] font-semibold text-slate-700 whitespace-nowrap">Filtrar:</span>
             <select
               value={filterPatientId}
-              onChange={(e) => setFilterPatientId(e.target.value)}
+              onChange={(e) => {
+                setFilterPatientId(e.target.value);
+                if (!e.target.value) setActiveTab('records');
+              }}
               className="px-4 py-2 text-[14px] bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] font-medium min-w-[200px] shadow-sm h-10"
             >
               <option value="">Todos os pacientes</option>
@@ -399,8 +404,29 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
         </div>
       </div>
 
-      <AnimatePresence>
-        {showForm && (
+      {filterPatientId && (
+        <div className="flex items-center space-x-1 border-b border-slate-200 mb-8">
+          <button
+            onClick={() => setActiveTab('records')}
+            className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'records' ? 'border-[#192F28] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            Prontuários e Evoluções
+          </button>
+          <button
+            onClick={() => setActiveTab('assessments')}
+            className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'assessments' ? 'border-[#192F28] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            Avaliações (Testes Psicométricos)
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'assessments' && filterPatientId ? (
+        <PatientAssessments patientId={filterPatientId} />
+      ) : (
+        <>
+          <AnimatePresence>
+            {showForm && (
         <div className="fixed inset-0 z-50">
           <motion.div 
             initial={{ opacity: 0 }}
@@ -993,6 +1019,9 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
 
           </div>
         </div>
+      )}
+
+      </>
       )}
 
     </motion.div>

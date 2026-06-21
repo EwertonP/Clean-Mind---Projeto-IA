@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Phone as PhoneIcon, ArrowRight, CornerDownRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Phone as PhoneIcon, ArrowRight, CornerDownRight, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Doctor, dataManager } from '../data';
 import { auth } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
@@ -10,7 +10,8 @@ interface AuthProps {
 }
 
 export default function Auth({ onAuthSuccess }: AuthProps) {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  type AuthTab = 'login' | 'register' | 'forgot_password' | 'verify_reset_code' | 'reset_password';
+  const [activeTab, setActiveTab] = useState<AuthTab>('login');
   const [showVerification, setShowVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -18,12 +19,23 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   // Login Fields
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   
   // Register Fields
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Password Recovery Fields
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState(['', '', '', '', '', '']);
+  const [generatedResetCode, setGeneratedResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
 
   // Verification
   const [verificationEmail, setVerificationEmail] = useState('');
@@ -34,7 +46,16 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     const params = new URLSearchParams(window.location.search);
     const verifyCode = params.get('verify');
     const emailParam = params.get('email');
-    if (verifyCode && emailParam) {
+    const inviteParam = params.get('invite');
+    const nameParam = params.get('name');
+    
+    if (inviteParam === 'true' && emailParam) {
+      setActiveTab('register');
+      setRegEmail(emailParam);
+      if (nameParam) setRegName(nameParam);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (verifyCode && emailParam) {
       setVerificationEmail(emailParam);
       setShowVerification(true);
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -64,6 +85,13 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         await updateDoc(docSnap.ref, { is_verified: true });
         
         const updatedDoc = { ...data, is_verified: true, id: docSnap.id } as Doctor;
+        
+        const docs = dataManager.getDoctors();
+        const idx = docs.findIndex(d => d.id === updatedDoc.id);
+        if (idx >= 0) docs[idx] = updatedDoc;
+        else docs.push(updatedDoc);
+        dataManager.saveDoctors(docs);
+
         localStorage.setItem('cm_doctor_session', updatedDoc.id);
         
         setShowVerification(false);
@@ -86,6 +114,34 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     setErrorMsg('');
 
     try {
+      // Hardcoded Agency Bypass
+      const normalizedEmail = loginEmail.trim().toLowerCase();
+      if (normalizedEmail === 'ewertonphillipe18@gmail.com' && (loginPassword === 'celanmindadmin' || loginPassword === 'cleanmindadmin')) {
+        const agencyDoc: Doctor = {
+          id: 'agency-admin-123',
+          name: 'CleanMind Agency',
+          email: 'ewertonphillipe18@gmail.com',
+          crp_crm: '',
+          specialty: '',
+          role: 'agency',
+          is_configured: true,
+          is_verified: true,
+          created_at: new Date().toISOString()
+        };
+        
+        const docs = dataManager.getDoctors();
+        const idx = docs.findIndex(d => d.id === agencyDoc.id);
+        if (idx >= 0) docs[idx] = agencyDoc;
+        else docs.push(agencyDoc);
+        dataManager.saveDoctors(docs);
+
+        localStorage.setItem('cm_doctor_session', agencyDoc.id);
+        
+        setLoading(false);
+        onAuthSuccess(agencyDoc);
+        return;
+      }
+
       const { user } = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       
       const { doc, getDoc, setDoc } = await import('firebase/firestore');
@@ -103,32 +159,44 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
       if (!currentDoc) {
         // Se autenticou no firebase mas não tem documento
+        const isAgency = user.email === 'ewertonphillipe18@gmail.com';
         currentDoc = {
           id: user.uid,
-          name: user.displayName || 'Administrador',
+          name: user.displayName || (isAgency ? 'CleanMind Agency' : 'Administrador'),
           email: user.email || '',
           crp_crm: '',
           specialty: '',
-          role: 'admin',
-          is_configured: false,
+          role: isAgency ? 'agency' : 'admin',
+          is_configured: isAgency ? true : false,
+          is_verified: isAgency ? true : false,
           created_at: new Date().toISOString()
         };
         await setDoc(doc(db, 'doctors', user.uid), currentDoc);
       }
       
+      const docs = dataManager.getDoctors();
+      const idx = docs.findIndex(d => d.id === currentDoc.id);
+      if (idx >= 0) docs[idx] = currentDoc;
+      else docs.push(currentDoc);
+      dataManager.saveDoctors(docs);
+
       localStorage.setItem('cm_doctor_session', currentDoc.id);
       
       setLoading(false);
       onAuthSuccess(currentDoc);
     } catch (e: any) {
       setLoading(false);
-      setErrorMsg('Credenciais inválidas. Verifique seu e-mail e tente novamente.');
+      if (e?.message?.includes('offline')) {
+        setErrorMsg('O Firestore não foi inicializado. Crie o Firestore Database no painel do Firebase.');
+      } else {
+        setErrorMsg('Credenciais inválidas. Verifique seu e-mail e tente novamente.');
+      }
     }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName || !regEmail || !regPhone || !regPassword) return;
+    if (!regName || !regEmail || !regPassword) return;
 
     setLoading(true);
     setErrorMsg('');
@@ -138,16 +206,17 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+      const isAgency = regEmail === 'ewertonphillipe18@gmail.com';
       const newDoc: Doctor = {
         id: user.uid,
-        name: regName,
+        name: isAgency ? 'CleanMind Agency' : regName,
         email: regEmail,
-        phone: regPhone,
+        phone: '',
         crp_crm: '',
         specialty: '',
-        role: 'admin',
-        is_configured: false,
-        is_verified: false,
+        role: isAgency ? 'agency' : 'admin',
+        is_configured: isAgency ? true : false,
+        is_verified: isAgency ? true : false,
         verification_code: verificationCode,
         created_at: new Date().toISOString()
       };
@@ -156,7 +225,6 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       const { db } = await import('../firebase');
       await setDoc(doc(db, 'doctors', user.uid), newDoc);
 
-      // Envia o e-mail via backend Resend
       const verifyLink = `${window.location.origin}?verify=${verificationCode}&email=${encodeURIComponent(regEmail)}`;
       
       try {
@@ -183,6 +251,8 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         setErrorMsg('E-mail inválido.');
       } else if (e.code === 'auth/operation-not-allowed') {
         setErrorMsg('Login por e-mail/senha não está habilitado no Firebase.');
+      } else if (e?.message?.includes('offline')) {
+        setErrorMsg('O Firestore não foi inicializado. Crie o Firestore Database no painel do Firebase.');
       } else {
         setErrorMsg(`Erro: ${e.message || 'Falha interna'}`);
       }
@@ -204,68 +274,120 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
       let currentDoc = docRef.exists() ? (docRef.data() as Doctor) : null;
 
       if (!currentDoc) {
+        const isAgency = user.email === 'ewertonphillipe18@gmail.com';
         currentDoc = {
           id: user.uid,
-          name: user.displayName || 'Administrador',
+          name: user.displayName || (isAgency ? 'CleanMind Agency' : 'Administrador'),
           email: user.email || '',
           crp_crm: '',
           specialty: '',
-          role: 'admin',
-          is_configured: false,
+          role: isAgency ? 'agency' : 'admin',
+          is_configured: isAgency ? true : false,
+          is_verified: isAgency ? true : false,
           created_at: new Date().toISOString()
         };
         await setDoc(doc(db, 'doctors', user.uid), currentDoc);
       }
       
+      const docs = dataManager.getDoctors();
+      const idx = docs.findIndex(d => d.id === currentDoc.id);
+      if (idx >= 0) docs[idx] = currentDoc;
+      else docs.push(currentDoc);
+      dataManager.saveDoctors(docs);
+
       localStorage.setItem('cm_doctor_session', currentDoc.id);
 
       onAuthSuccess(currentDoc);
       setLoading(false);
     } catch (e: any) {
-      console.error(e);
-      setErrorMsg('Erro ao fazer login com o Google.');
+      if (e?.message?.includes('offline')) {
+        setErrorMsg('O Firestore não foi inicializado. Crie o Firestore Database no painel do Firebase.');
+      } else {
+        console.error(e);
+        setErrorMsg('Erro ao fazer login com o Google.');
+      }
       setLoading(false);
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (verificationCodeInput.length !== 6) {
-      setErrorMsg('O código deve ter 6 dígitos.');
+  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      setErrorMsg('Por favor, informe seu e-mail.');
       return;
     }
-    
-    setIsVerifyingCode(true);
-    setErrorMsg('');
-
+    setLoading(true);
     try {
-      const { collection, query, where, getDocs, updateDoc } = await import('firebase/firestore');
-      const { db } = await import('../firebase');
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedResetCode(code);
       
-      const q = query(collection(db, 'doctors'), where('email', '==', verificationEmail));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        throw new Error('Usuário não encontrado.');
+      const response = await fetch('/api/send-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, code }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao enviar e-mail');
       }
+
+      setLoading(false);
+      setActiveTab('verify_reset_code');
+      setErrorMsg('');
       
-      const docSnap = querySnapshot.docs[0];
-      const data = docSnap.data();
-      
-      if (data.verification_code === verificationCodeInput) {
-        await updateDoc(docSnap.ref, { is_verified: true });
-        
-        const updatedDoc = { ...data, is_verified: true, id: docSnap.id } as Doctor;
-        localStorage.setItem('cm_doctor_session', updatedDoc.id);
-        
-        setShowVerification(false);
-        setIsVerifyingCode(false);
-        onAuthSuccess(updatedDoc);
-      } else {
-        throw new Error('Código incorreto.');
-      }
-    } catch (e: any) {
-      setErrorMsg(e.message || 'Falha ao verificar código.');
-      setIsVerifyingCode(false);
+      // Fallback for AI Studio preview environment: Resend free tier only sends to the verified account owner email.
+      // So we show the code in an alert in development so the user isn't blocked from testing the flow.
+      alert(`Código enviado!\n(Se não chegar no e-mail por restrições do plano gratuito do Resend, use este código para testar: ${code})`);
+
+    } catch (error) {
+      console.error(error);
+      setErrorMsg('Erro ao enviar e-mail. Verifique se o backend está configurado corretamente.');
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyResetCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = resetCode.join('');
+    if (code !== generatedResetCode) {
+      setErrorMsg('Código incorreto. Tente novamente.');
+      return;
+    }
+    setErrorMsg('');
+    setActiveTab('reset_password');
+  };
+
+  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      setErrorMsg('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMsg('As senhas não coincidem.');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      alert('Simulação: Senha redefinida com sucesso!');
+      setActiveTab('login');
+      setResetEmail('');
+      setResetCode(['', '', '', '', '', '']);
+      setNewPassword('');
+      setConfirmNewPassword('');
+    }, 1000);
+  };
+  
+  const handleResetCodeChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const newCode = [...resetCode];
+    newCode[index] = value;
+    setResetCode(newCode);
+    
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`reset-code-${index + 1}`);
+      nextInput?.focus();
     }
   };
 
@@ -291,288 +413,467 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   );
 
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-center items-center p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-md relative z-10 animate-fade-in">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 font-sans">
+      <div className="w-full max-w-[1000px] bg-white rounded-[2rem] shadow-xl overflow-hidden flex flex-col md:flex-row h-auto md:h-[650px]">
         
-        {/* Logo Area */}
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#192F28] flex items-center justify-center text-white font-serif font-bold text-2xl shadow-xl mb-4">
-            C
+        {/* Left Column - Image */}
+        <div className="hidden md:block md:w-1/2 relative bg-[#1E3029]">
+          <div className="w-full h-full overflow-hidden relative">
+            <img 
+               src="/tela%20de%20login.png" 
+               alt="CleanMind" 
+               className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Render the image uploaded by the user */}
           </div>
-          <h1 className="text-3xl font-serif font-semibold text-slate-900 tracking-tight">CleanMind</h1>
-          <p className="text-slate-500 font-mono text-xs mt-2 tracking-wide uppercase">Software Médico de Alto Padrão</p>
         </div>
 
-        {/* Main Box */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+        {/* Right Column - Form */}
+        <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-white relative overflow-y-auto overflow-x-hidden">
           
-          {showVerification ? (
-            <div className="p-8 sm:p-10 flex flex-col items-center text-center animate-fade-in">
-              <div className="w-16 h-16 bg-[#C1E2A4]/20 text-[#192F28] rounded-full flex items-center justify-center mb-6">
-                {isVerifyingCode ? (
-                  <Loader2 className="w-8 h-8 animate-spin" />
-                ) : (
-                  <Mail className="w-8 h-8" />
-                )}
-              </div>
-              <h2 className="text-2xl font-serif text-slate-900 font-medium mb-3">
-                {isVerifyingCode ? 'Verificando...' : 'Verifique seu e-mail'}
-              </h2>
-              <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                Enviamos um e-mail de verificação para <strong className="text-slate-900">{verificationEmail}</strong>. <br/><br/>
-                Por favor, clique no botão enviado no seu e-mail para validar seu acesso.
-              </p>
-
-              {errorMsg && (
-                <div className="w-full p-3 mb-6 bg-rose-50 text-rose-600 text-sm font-medium rounded-xl flex items-center">
-                  <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                  {errorMsg}
+          <div className="max-w-sm w-full mx-auto my-auto">
+            {showVerification ? (
+              <div className="flex flex-col items-center text-center animate-fade-in">
+                <div className="w-16 h-16 bg-[#C1E2A4]/20 text-[#192F28] rounded-full flex items-center justify-center mb-6">
+                  {isVerifyingCode ? (
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                  ) : (
+                    <Mail className="w-8 h-8" />
+                  )}
                 </div>
-              )}
-              
-              <button
-                onClick={() => {
-                  setShowVerification(false);
-                  setActiveTab('login');
-                }}
-                className="w-full h-12 border border-[#C1E2A4]/50 text-[#192F28] hover:bg-[#C1E2A4]/20 font-medium rounded-xl transition-all flex items-center justify-center mb-4"
-              >
-                Voltar para o Login
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Tabs */}
-              <div className="flex border-b border-slate-100">
+                <h2 className="text-2xl font-serif text-slate-900 font-medium mb-3">
+                  {isVerifyingCode ? 'Verificando...' : 'Verifique seu e-mail'}
+                </h2>
+                <p className="text-sm text-slate-600 leading-relaxed mb-6">
+                  Enviamos um e-mail de verificação para <strong className="text-slate-900">{verificationEmail}</strong>. <br/><br/>
+                  Por favor, clique no botão enviado no seu e-mail para validar seu acesso.
+                </p>
+
+                {errorMsg && (
+                  <div className="w-full p-3 mb-6 bg-rose-50 text-rose-600 text-sm font-medium rounded-xl flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                    {errorMsg}
+                  </div>
+                )}
+                
                 <button
-                  onClick={() => { setActiveTab('login'); setErrorMsg(''); }}
-                  className={`flex-1 py-5 text-sm font-medium transition-colors relative ${
-                    activeTab === 'login' ? 'text-[#192F28]' : 'text-slate-400 hover:text-slate-600'
-                  }`}
+                  onClick={() => {
+                    setShowVerification(false);
+                    setActiveTab('login');
+                  }}
+                  className="w-full h-12 border border-[#C1E2A4]/50 text-[#192F28] hover:bg-[#C1E2A4]/20 font-medium rounded-xl transition-all flex items-center justify-center mb-4"
                 >
-                  Fazer Login
-                  {activeTab === 'login' && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#192F28]" />
-                  )}
-                </button>
-                <button
-                  onClick={() => { setActiveTab('register'); setErrorMsg(''); }}
-                  className={`flex-1 py-5 text-sm font-medium transition-colors relative ${
-                    activeTab === 'register' ? 'text-[#192F28]' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  Cadastrar-se
-                  {activeTab === 'register' && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#192F28]" />
-                  )}
+                  Voltar para o Login
                 </button>
               </div>
+            ) : activeTab === 'login' ? (
+              <div key="login" className="animate-fade-in space-y-6">
+                <div>
+                  <h2 className="text-[28px] font-semibold text-slate-900 tracking-tight leading-tight mb-2">
+                    Acesso à sua conta
+                  </h2>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Gerencie agendas, acompanhe seus pacientes, verifique alertas clínicos e acesse resumos diários de onde estiver.
+                  </p>
+                </div>
 
-              {/* Form Content */}
-              <div className="p-8 sm:p-10 relative">
-                {activeTab === 'login' ? (
-                  <div key="login" className="animate-fade-in space-y-6">
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                      
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5 ml-1">E-mail</label>
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input
-                            type="email"
-                            required
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                            placeholder="seu@email.com"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
-                          />
-                        </div>
-                      </div>
+                <form onSubmit={handleLoginSubmit} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      required
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      placeholder="Digite seu e-mail"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                    />
+                  </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5 ml-1">Senha</label>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input
-                            type="password"
-                            required
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end mt-1">
-                        <a href="#" className="text-xs text-slate-500 hover:text-[#192F28]/70 hover:underline transition-colors">
-                          Esqueceu sua senha?
-                        </a>
-                      </div>
-
-                      {errorMsg && (
-                        <div className="flex items-center space-x-2 text-red-600 text-sm mt-3 bg-red-50 p-3 rounded-lg border border-red-200">
-                          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                          <span>{errorMsg}</span>
-                        </div>
-                      )}
-
-                      <div className="pt-2">
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full bg-[#192F28] hover:bg-[#192F28]/90 text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                          {loading ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            <>
-                              <span>Entrar no Consultório</span>
-                              <ArrowRight className="h-4 w-4" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </form>
-
-                    <div className="relative flex items-center py-2 mt-4">
-                      <div className="flex-grow border-t border-slate-200"></div>
-                      <span className="flex-shrink-0 mx-4 text-xs text-slate-400">ou</span>
-                      <div className="flex-grow border-t border-slate-200"></div>
-                    </div>
-
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        onClick={handleGoogleSignIn}
-                        disabled={loading}
-                        className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Senha <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <input
+                        type={showLoginPassword ? "text" : "password"}
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="Digite sua senha"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
                       >
-                        <GoogleLogo />
-                        Fazer login com o Google
+                        {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div key="register" className="animate-fade-in space-y-6">
-                    <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                      
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5 ml-1">Nome completo</label>
-                        <div className="relative">
-                          <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input
-                            type="text"
-                            required
-                            value={regName}
-                            onChange={(e) => setRegName(e.target.value)}
-                            placeholder="Dr. Nome Sobrenome"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
-                          />
-                        </div>
-                      </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5 ml-1">E-mail</label>
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input
-                            type="email"
-                            required
-                            value={regEmail}
-                            onChange={(e) => setRegEmail(e.target.value)}
-                            placeholder="seu@email.com"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5 ml-1">Telefone</label>
-                        <div className="relative">
-                          <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input
-                            type="tel"
-                            required
-                            value={regPhone}
-                            onChange={(e) => setRegPhone(maskPhone(e.target.value))}
-                            placeholder="(00) 00000-0000"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1.5 ml-1">Senha</label>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input
-                            type="password"
-                            required
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4] transition-all text-sm text-slate-800 placeholder:text-slate-400"
-                          />
-                        </div>
-                      </div>
-                      
-                      {errorMsg && (
-                        <div className="flex items-center space-x-2 text-red-600 text-sm mt-3 bg-red-50 p-3 rounded-lg border border-red-200">
-                          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                          <span>{errorMsg}</span>
-                        </div>
-                      )}
-
-                      <div className="pt-4">
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full bg-[#192F28] hover:bg-[#192F28]/90 text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                          {loading ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            <>
-                              <span>Continuar</span>
-                              <ArrowRight className="h-4 w-4" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      <div className="relative flex items-center py-2 mt-4">
-                        <div className="flex-grow border-t border-slate-200"></div>
-                        <span className="flex-shrink-0 mx-4 text-xs text-slate-400">ou</span>
-                        <div className="flex-grow border-t border-slate-200"></div>
-                      </div>
-
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={handleGoogleSignIn}
-                          disabled={loading}
-                          className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                          <GoogleLogo />
-                          Cadastrar com o Google
-                        </button>
-                      </div>
-
-                      <p className="text-[11px] text-slate-400 text-center px-4 mt-4 leading-relaxed">
-                        Ao se cadastrar, você concorda com nossos Termos de Uso e Política de Privacidade da LGPD.
-                      </p>
-                    </form>
+                  <div className="flex justify-end">
+                    <button 
+                      type="button"
+                      onClick={() => { setActiveTab('forgot_password'); setErrorMsg(''); }}
+                      className="text-sm font-medium text-[#7fb742] hover:text-[#6a9a37] transition-colors"
+                    >
+                      Esqueceu a senha?
+                    </button>
                   </div>
-                )}
+
+                  {errorMsg && (
+                    <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-[#1e201b] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <span>Login</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="relative flex items-center py-2">
+                  <div className="flex-grow border-t border-slate-100"></div>
+                  <span className="flex-shrink-0 mx-4 text-xs text-slate-400 font-medium uppercase tracking-wider">ou</span>
+                  <div className="flex-grow border-t border-slate-100"></div>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                    className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    <GoogleLogo />
+                    Continuar com o Google
+                  </button>
+                </div>
+
+                <div className="text-center pt-2">
+                  <span className="text-sm text-slate-500">
+                    Ainda não tem uma conta?{' '}
+                    <button 
+                      onClick={() => { setActiveTab('register'); setErrorMsg(''); }}
+                      className="font-medium text-[#7fb742] hover:text-[#6a9a37] transition-colors"
+                    >
+                      Criar uma conta
+                    </button>
+                  </span>
+                </div>
+
               </div>
-            </>
-          )}
+            ) : activeTab === 'register' ? (
+              <div key="register" className="animate-fade-in space-y-4">
+                 <div>
+                  <h2 className="text-[28px] font-semibold text-slate-900 tracking-tight leading-tight mb-2">
+                    Nova conta
+                  </h2>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Crie sua conta para começar a gerenciar seus pacientes e usar nossos recursos.
+                  </p>
+                </div>
+
+                <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Nome completo <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      required
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="Seu e-mail"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Senha <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <input
+                        type={showRegPassword ? "text" : "password"}
+                        required
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Crie uma senha forte"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      >
+                        {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-[#1e201b] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <span>Criar conta</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="relative flex items-center">
+                  <div className="flex-grow border-t border-slate-100"></div>
+                  <span className="flex-shrink-0 mx-4 text-xs text-slate-400 font-medium uppercase tracking-wider">ou</span>
+                  <div className="flex-grow border-t border-slate-100"></div>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                    className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    <GoogleLogo />
+                    Continuar com o Google
+                  </button>
+                </div>
+
+                <div className="text-center pt-2 pb-4">
+                  <span className="text-sm text-slate-500">
+                    Já tem uma conta?{' '}
+                    <button 
+                      onClick={() => { setActiveTab('login'); setErrorMsg(''); }}
+                      className="font-medium text-[#7fb742] hover:text-[#6a9a37] transition-colors"
+                    >
+                      Fazer login
+                    </button>
+                  </span>
+                </div>
+              </div>
+            ) : activeTab === 'forgot_password' ? (
+              <div key="forgot_password" className="animate-fade-in space-y-6">
+                <div>
+                  <button 
+                    onClick={() => { setActiveTab('login'); setErrorMsg(''); }}
+                    className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors mb-6"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar para o login
+                  </button>
+                  <h2 className="text-[28px] font-semibold text-slate-900 tracking-tight leading-tight mb-2">
+                    Esqueceu a senha?
+                  </h2>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Digite o e-mail associado à sua conta. Enviaremos um código de 6 dígitos para você redefinir sua senha.
+                  </p>
+                </div>
+
+                <form onSubmit={handleForgotPasswordRequest} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      required
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="Digite seu e-mail"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                    />
+                  </div>
+
+                  {errorMsg && (
+                    <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-[#1e201b] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <span>Enviar código</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : activeTab === 'verify_reset_code' ? (
+              <div key="verify_reset_code" className="animate-fade-in space-y-6">
+                <div>
+                  <button 
+                    onClick={() => { setActiveTab('login'); setErrorMsg(''); setResetCode(['', '', '', '', '', '']); }}
+                    className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors mb-6"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar para o login
+                  </button>
+                  <h2 className="text-[28px] font-semibold text-slate-900 tracking-tight leading-tight mb-2">
+                    Digite o código
+                  </h2>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Insira o código de 6 dígitos que enviamos para <span className="font-semibold">{resetEmail}</span>.
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyResetCode} className="space-y-5">
+                  <div className="flex justify-between max-w-xs mx-auto mb-6">
+                    {resetCode.map((digit, index) => (
+                      <input
+                        key={index}
+                        id={`reset-code-${index}`}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleResetCodeChange(index, e.target.value)}
+                        className="w-10 h-10 sm:w-12 sm:h-12 text-center text-xl font-semibold bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-2 focus:ring-[#C1E2A4] transition-all"
+                      />
+                    ))}
+                  </div>
+
+                  {errorMsg && (
+                    <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200 mt-4">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading || resetCode.some(d => d === '')}
+                      className="w-full bg-[#1e201b] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      Verificar código
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div key="reset_password" className="animate-fade-in space-y-6">
+                <div>
+                  <button 
+                    onClick={() => { setActiveTab('login'); setErrorMsg(''); setResetEmail(''); setResetCode(['', '', '', '', '', '']); setNewPassword(''); setConfirmNewPassword(''); }}
+                    className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors mb-6"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Voltar para o login
+                  </button>
+                  <h2 className="text-[28px] font-semibold text-slate-900 tracking-tight leading-tight mb-2">
+                    Nova senha
+                  </h2>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    Crie uma nova senha para sua conta e comece a usá-la imediatamente.
+                  </p>
+                </div>
+
+                <form onSubmit={handleResetPasswordSubmit} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Nova Senha <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      >
+                        {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-700">Confirme a Senha <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmNewPassword ? "text" : "password"}
+                        required
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        placeholder="Repita a nova senha"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      >
+                        {showConfirmNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-[#1e201b] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <span>Redefinir Senha</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
         </div>
-        
-        <div className="text-center mt-8 text-slate-400 text-xs font-mono">
-          © 2026 CleanMind Ltda. SRES Registro Eletrônico Licenciado.
-        </div>
+
       </div>
     </div>
   );

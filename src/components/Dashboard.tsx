@@ -15,6 +15,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const appointments = useStore(state => state.appointments);
   const billing = useStore(state => state.billing);
   const diaryEntries = useStore(state => state.diary);
+  const expenses = useStore(state => state.expenses);
   
   // Calculations for KPIs
   // Using fixed date matching the app's current context
@@ -53,21 +54,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     const formattedMonth = `${mYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     
     // Revenue
-    const monthlyBills = billing.filter(b => b.status === 'paid' && b.due_date.startsWith(formattedMonth));
-    const totalRev = monthlyBills.reduce((acc, bill) => acc + bill.amount, 0);
+    const monthlyBillsPaid = billing.filter(b => b.status === 'paid' && b.due_date.startsWith(formattedMonth));
+    const totalRev = monthlyBillsPaid.reduce((acc, bill) => acc + bill.amount, 0);
+
+    const monthlyBillsPending = billing.filter(b => b.status === 'pending' && b.due_date.startsWith(formattedMonth));
+    const totalPending = monthlyBillsPending.reduce((acc, bill) => acc + bill.amount, 0);
+
+    const monthlyExp = expenses.filter(e => e.date.startsWith(formattedMonth));
+    const totalExp = monthlyExp.reduce((acc, exp) => acc + exp.amount, 0);
     
-    if (totalRev > 0) {
-      revenueData.push({ 
-        name: mName, 
-        Economia: Math.floor(totalRev * 0.2),
-        Receita: totalRev,
-        Despesas: Math.floor(totalRev * 0.4)
-      });
-    } else {
-      revenueData.push({
-        name: mName,
-      });
-    }
+    revenueData.push({ 
+      name: mName, 
+      "A receber": totalPending,
+      Receita: totalRev,
+      Despesas: totalExp
+    });
 
     // Sessions (for the bar chart requested)
     const monthlyApps = appointments.filter(a => a.date.startsWith(formattedMonth));
@@ -252,7 +253,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
               <div className="flex items-center space-x-4 text-xs font-semibold text-slate-500">
                 <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#C1E2A4] mr-1.5"></div> Receita</div>
-                <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#192F28] mr-1.5"></div> Economia</div>
+                <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#192F28] mr-1.5"></div> A receber</div>
                 <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#A3B1A6] mr-1.5"></div> Despesas</div>
               </div>
             </div>
@@ -289,7 +290,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                       cursor={{ fill: '#f8fafc' }}
                     />
                     <Bar dataKey="Despesas" fill="#A3B1A6" stackId="a" />
-                    <Bar dataKey="Economia" fill="#192F28" stackId="a" />
+                    <Bar dataKey="A receber" fill="#192F28" stackId="a" />
                     <Bar dataKey="Receita" fill="#C1E2A4" stackId="a" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

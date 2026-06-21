@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2 } from 'lucide-react';
-import { connectGoogleCalendar, isGoogleCalendarConnected } from '../googleCalendar';
+import { connectGoogleCalendar, isGoogleCalendarConnected, disconnectGoogleCalendar } from '../googleCalendar';
 import { dataManager, compressImage } from '../data';
 import { useStore } from '../store';
 import { maskCNPJ, maskDate, maskPhone, maskCEP } from '../utils/masks';
 import { getStates, getCities, fetchAddressByCep, IBGEState, IBGECity } from '../utils/ibge';
 
+const timeOptions = Array.from({ length: 24 * 2 }).map((_, idx) => {
+  const hour = Math.floor(idx / 2).toString().padStart(2, '0');
+  const minute = idx % 2 === 0 ? '00' : '30';
+  return `${hour}:${minute}`;
+});
+
 export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: () => void }) {
   const sessionId = localStorage.getItem('cm_doctor_session');
   const doctorsStore = useStore(state => state.doctors);
-  const doc = doctorsStore.find(d => d.id === sessionId) || doctorsStore[0] || dataManager.getDoctor();
+  const doc = doctorsStore.find(d => d.id === sessionId) || dataManager.getDoctor();
   
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'integrations' | 'whatsapp'>('profile');
   const [googleConnected, setGoogleConnected] = useState(isGoogleCalendarConnected());
@@ -59,6 +65,48 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
       setCitiesList([]);
     }
   }, [profileData.state]);
+
+  // Auto-save draft when editing initial configuration
+  useEffect(() => {
+    if (doc?.is_configured !== false) return;
+    
+    // Only run if there is some data to save
+    if (!profileData.name && !profileData.cnpj && !profileData.phone) return;
+
+    const timeout = setTimeout(() => {
+      if (sessionId && doc) {
+        const roomsNum = parseInt(profileData.numberOfRooms, 10) || 1;
+        const draftDoc = { ...doc };
+        draftDoc.clinic_name = profileData.name;
+        draftDoc.clinic_logo = profileData.logo;
+        draftDoc.specialty = profileData.specialty;
+        draftDoc.clinic_description = profileData.description;
+        draftDoc.clinic_cnpj = profileData.cnpj;
+        draftDoc.clinic_founded = profileData.founded;
+        draftDoc.clinic_street = profileData.address;
+        draftDoc.clinic_neighborhood = profileData.neighborhood;
+        draftDoc.clinic_zip = profileData.zip;
+        draftDoc.clinic_city = profileData.city;
+        draftDoc.clinic_state = profileData.state;
+        draftDoc.phone = profileData.phone;
+        draftDoc.email = profileData.email;
+        draftDoc.clinic_website = profileData.website;
+        draftDoc.clinic_address = `${profileData.address}, ${profileData.neighborhood} - ${profileData.city}/${profileData.state} - CEP: ${profileData.zip}`;
+        draftDoc.custom_signature = profileData.custom_signature;
+        draftDoc.consultation_price = profileData.consultationPrice ? parseFloat(profileData.consultationPrice.replace(',', '.')) : undefined;
+        draftDoc.clinic_rooms = Array.from({length: roomsNum}, (_, i) => `Sala ${i + 1}`);
+        draftDoc.business_hours = {
+          start: profileData.businessHoursStart,
+          end: profileData.businessHoursEnd,
+          days: profileData.businessDays
+        };
+        // DO NOT set is_configured = true here. It remains a draft until explicit save.
+        dataManager.saveDoctor(draftDoc);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timeout);
+  }, [profileData]); // only depend on profileData to avoid loop with doc
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     let { name, value } = e.target;
@@ -169,6 +217,11 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
     }
   };
 
+  const handleDisconnectGoogle = () => {
+    disconnectGoogleCalendar();
+    setGoogleConnected(false);
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -192,41 +245,43 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
       )}
 
       {/* Tabs */}
-      <div className="flex items-center space-x-4 border-b border-slate-200">
-        <button
-          onClick={() => setActiveSubTab('profile')}
-          className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
-            activeSubTab === 'profile' 
-              ? 'border-[#192F28] text-[#192F28]' 
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          <span>Perfil da Clínica</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('integrations')}
-          className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
-            activeSubTab === 'integrations' 
-              ? 'border-[#192F28] text-[#192F28]' 
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <LinkIcon className="w-4 h-4" />
-          <span>Integrações</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('whatsapp')}
-          className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
-            activeSubTab === 'whatsapp' 
-              ? 'border-[#192F28] text-[#192F28]' 
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" />
-          <span>WhatsApp</span>
-        </button>
-      </div>
+      {doc?.is_configured !== false && (
+        <div className="flex items-center space-x-4 border-b border-slate-200">
+          <button
+            onClick={() => setActiveSubTab('profile')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
+              activeSubTab === 'profile' 
+                ? 'border-[#192F28] text-[#192F28]' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Perfil da Clínica</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('integrations')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
+              activeSubTab === 'integrations' 
+                ? 'border-[#192F28] text-[#192F28]' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <LinkIcon className="w-4 h-4" />
+            <span>Integrações</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('whatsapp')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
+              activeSubTab === 'whatsapp' 
+                ? 'border-[#192F28] text-[#192F28]' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>WhatsApp</span>
+          </button>
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -381,7 +436,10 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Horário de Abertura</span>
                     {isEditing ? (
-                      <input type="time" name="businessHoursStart" value={profileData.businessHoursStart} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('businessHoursStart') ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} />
+                      <select name="businessHoursStart" value={profileData.businessHoursStart} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 pb-1 bg-transparent ${validationErrors.includes('businessHoursStart') ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
+                         <option value="">Selecione...</option>
+                         {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.businessHoursStart || '00:00'}</p>
                     )}
@@ -389,7 +447,10 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                   <div>
                     <span className="text-xs text-slate-500 font-medium block mb-1">Horário de Fechamento</span>
                     {isEditing ? (
-                      <input type="time" name="businessHoursEnd" value={profileData.businessHoursEnd} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 ${validationErrors.includes('businessHoursEnd') ? 'border-red-500 bg-red-50' : 'border-slate-300'}`} />
+                      <select name="businessHoursEnd" value={profileData.businessHoursEnd} onChange={handleChange} className={`text-[15px] font-medium text-slate-900 border-b w-full focus:outline-none focus:border-slate-600 pb-1 bg-transparent ${validationErrors.includes('businessHoursEnd') ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
+                         <option value="">Selecione...</option>
+                         {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
                     ) : (
                       <p className="text-[15px] font-medium text-slate-900">{profileData.businessHoursEnd || '00:00'}</p>
                     )}
@@ -556,10 +617,18 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
               </div>
               <div>
                 {googleConnected ? (
-                    <span className="text-[#192F28] font-semibold px-4 py-2 border border-[#C1E2A4]/50 bg-[#C1E2A4]/20 rounded-lg flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-[#192F28] block"></span>
-                      <span>Conectado</span>
-                    </span>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-[#192F28] font-semibold px-4 py-2 border border-[#C1E2A4]/50 bg-[#C1E2A4]/20 rounded-lg flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-[#192F28] block"></span>
+                        <span>Conectado</span>
+                      </span>
+                      <button 
+                        onClick={handleDisconnectGoogle}
+                        className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-semibold transition cursor-pointer"
+                      >
+                        Desconectar
+                      </button>
+                    </div>
                  ) : (
                     <button 
                       onClick={handleConnectGoogle}

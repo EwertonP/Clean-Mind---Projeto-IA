@@ -158,7 +158,8 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
         room: type === 'presencial' ? room : undefined,
         status: 'confirmed',
         is_return: appointmentType === 'retorno',
-        price: finalPrice
+        price: finalPrice,
+        doctor_id: doctorId
       });
 
       if (!newApp.is_return && newAppPrice > 0) {
@@ -168,11 +169,12 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
 
     // Refresh clinical lists
     
-    const doc = doctors.find(d => d.id === newApp.doctor_id);
+    const appDoctorId = newApp.doctor_id || patients.find(p => p.id === selectedPatientId)?.doctor_id || dataManager.getDoctor().id;
+    const doc = doctorsStore.find(d => d.id === appDoctorId) || dataManager.getDoctors().find(d => d.id === appDoctorId) || dataManager.getDoctor();
     const doctorToken = doc?.google_access_token;
     
     if (isGoogleCalendarConnected() || doctorToken) {
-      const doctorName = doc ? doc.name : 'Médico';
+      const doctorName = doc?.name?.trim() ? doc.name : 'Médico';
       const actualRoom = newApp.type === 'presencial' ? newApp.room : undefined;
       const pat = patients.find(p => p.id === selectedPatientId);
       const syncResult = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom, doctorToken, pat?.email);
@@ -229,7 +231,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     setShowForm(false);
     setShowDeleteConfirm(false);
 
-    const doc = doctors.find(d => d.id === appToDel?.doctor_id);
+    const doc = doctorsStore.find(d => d.id === appToDel?.doctor_id);
     const doctorToken = doc?.google_access_token;
     
     if (appToDel?.google_event_id && (isGoogleCalendarConnected() || doctorToken)) {

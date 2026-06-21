@@ -11,7 +11,8 @@ interface DoctorsProps {}
 export default function Doctors({}: DoctorsProps) {
   const doctorsStore = useStore(state => state.doctors);
   const doctors = doctorsStore.filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
-  const myDoctor = doctorsStore[0]; // fallback from manager
+  const sessionId = localStorage.getItem('cm_doctor_session');
+  const myDoctor = doctorsStore.find(d => d.id === sessionId) || dataManager.getDoctor();
   
   const [showDoctorForm, setShowDoctorForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

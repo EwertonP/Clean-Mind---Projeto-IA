@@ -19,7 +19,10 @@ import {
   Stethoscope,
   AlertTriangle,
   CheckCircle2,
-  Users
+  Users,
+  ShieldCheck,
+  Building2,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Doctor, dataManager } from './data';
@@ -33,6 +36,8 @@ import PatientDiaryApp from './components/PatientDiaryApp';
 import AlertCenter from './components/AlertCenter';
 import Doctors from './components/Doctors';
 import Settings from './components/Settings';
+import AgencyDashboard from './components/AgencyDashboard';
+import { AgencyFinanceDashboard } from './components/AgencyFinanceDashboard';
 
 export default function App() {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
@@ -49,6 +54,7 @@ export default function App() {
   const [openNewAppointmentParam, setOpenNewAppointmentParam] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [agencyTab, setAgencyTab] = useState<'clinics' | 'finance'>('clinics');
   const [globalToastMessage, setGlobalToastMessage] = useState('');
   
   const [hasAlerts, setHasAlerts] = useState(false);
@@ -74,10 +80,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (doctor?.is_configured === false && activeTab !== 'configuracoes') {
+    if (doctor?.is_configured === false && activeTab !== 'configuracoes' && doctor.role !== 'agency') {
       setActiveTab('configuracoes');
     }
-  }, [doctor?.is_configured, activeTab]);
+  }, [doctor?.is_configured, activeTab, doctor?.role]);
 
   useEffect(() => {
     if (!doctor) return;
@@ -169,6 +175,129 @@ export default function App() {
       localStorage.setItem('cm_doctor_session', doc.id);
       setDoctor(doc);
     }} />;
+  }
+
+  if (doctor.role === 'agency') {
+    return (
+      <div className="min-h-screen bg-[#FBFBFA] font-sans text-slate-900 flex">
+        {/* Mobile Backdrop Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Navigation Sidebar (Desktop & Mobile Drawer) */}
+        <aside className={`fixed top-0 left-0 h-screen w-[260px] flex-col border-r border-slate-100 bg-white z-40 shadow-xl md:shadow-none transform transition-transform duration-300 ease-in-out md:flex ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full md:translate-x-0 hidden'}`}>
+          <div className="flex flex-col flex-grow">
+            
+            {/* Brand Seal header */}
+            <div className="p-6 pb-2 inline-flex items-center space-x-2 relative">
+              <div className="w-8 h-8 rounded-lg bg-[#C1E2A4] flex items-center justify-center text-[#192F28]">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">CleanMind Hub</h1>
+              
+              <button 
+                className="md:hidden absolute right-4 top-6 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* User Profile Card */}
+            <div className="px-4 mt-4">
+              <div className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-100 shadow-sm rounded-xl">
+                <div className="flex items-center min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs shrink-0">
+                    A
+                  </div>
+                  <div className="ml-3 min-w-0 text-left">
+                    <p className="text-sm font-bold text-slate-900 truncate">Agência</p>
+                    <p className="text-xs text-slate-500 truncate">{doctor.email}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Links list */}
+            <nav className="flex-grow px-4 space-y-5 mt-8 overflow-y-auto pb-4">
+              <div>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3">Administração</h3>
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => { setAgencyTab('clinics'); setIsMobileMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${agencyTab === 'clinics' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  >
+                    <Building2 className={`h-[18px] w-[18px] shrink-0 ${agencyTab === 'clinics' ? 'text-[#76A34A]' : 'text-slate-400'}`} />
+                    <span>Clínicas</span>
+                  </button>
+                  <button
+                    onClick={() => { setAgencyTab('finance'); setIsMobileMenuOpen(false); }}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${agencyTab === 'finance' ? 'bg-slate-100 text-slate-900 shadow-sm border-slate-200/50' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  >
+                    <DollarSign className={`h-[18px] w-[18px] shrink-0 ${agencyTab === 'finance' ? 'text-[#76A34A]' : 'text-slate-400'}`} />
+                    <span>Financeiro Hub</span>
+                  </button>
+                </div>
+              </div>
+            </nav>
+            
+            {/* Footer Area Navigation */}
+            <div className="p-4 mt-auto">
+               <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50"
+                >
+                  <LogOut className="h-[18px] w-[18px] shrink-0" />
+                  <span>Sair do Hub</span>
+                </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main viewport Container */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen md:ml-[260px] bg-slate-50 w-full relative">
+          
+          {/* Header navigation controller */}
+          <header className="sticky top-0 z-10 flex items-center justify-between py-4 px-4 sm:px-8 shrink-0 transition-all h-16 md:h-[72px] bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-sm md:bg-transparent md:border-none md:shadow-none md:backdrop-blur-none" style={{ marginTop: '0px' }}>
+            
+            <div className="flex items-center space-x-3 sm:space-x-4 w-full">
+              {/* Small screen menu triggers */}
+              <div className="md:hidden flex items-center">
+                <button 
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-1.5 -ml-1.5 mr-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key="agency-header"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="min-w-0 flex-1 truncate"
+                >
+                   <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-800 truncate">
+                     {agencyTab === 'clinics' ? 'Gerenciamento de Clínicas' : 'Painel Financeiro'}
+                   </h2>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto px-4 sm:px-8 pb-12 w-full max-w-[1600px] mx-auto custom-scroll">
+            {agencyTab === 'clinics' ? <AgencyDashboard /> : <AgencyFinanceDashboard />}
+          </main>
+        </div>
+      </div>
+    );
   }
 
   if (doctor.is_configured === false) {

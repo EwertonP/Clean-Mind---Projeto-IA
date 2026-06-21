@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, User, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 import { Appointment } from './data';
 
@@ -10,10 +10,33 @@ const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/calendar.events');
 provider.addScope('https://www.googleapis.com/auth/gmail.send');
 
+let isSigningIn = false;
 let cachedAccessToken: string | null = localStorage.getItem('google_access_token');
+
+export const initAuth = (
+  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthFailure?: () => void
+) => {
+  return onAuthStateChanged(auth, async (user: User | null) => {
+    if (user) {
+      if (cachedAccessToken) {
+        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
+      } else if (!isSigningIn) {
+        cachedAccessToken = null;
+        localStorage.removeItem('google_access_token');
+        if (onAuthFailure) onAuthFailure();
+      }
+    } else {
+      cachedAccessToken = null;
+      localStorage.removeItem('google_access_token');
+      if (onAuthFailure) onAuthFailure();
+    }
+  });
+};
 
 export const connectGoogleCalendar = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
+    isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
@@ -22,15 +45,22 @@ export const connectGoogleCalendar = async (): Promise<{ user: User; accessToken
     cachedAccessToken = credential.accessToken;
     localStorage.setItem('google_access_token', cachedAccessToken);
     return { user: result.user, accessToken: cachedAccessToken };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Google Sign-in error:', error);
     throw error;
+  } finally {
+    isSigningIn = false;
   }
 };
 
 export const getGoogleAccessToken = () => cachedAccessToken;
 
 export const isGoogleCalendarConnected = () => !!cachedAccessToken;
+
+export const disconnectGoogleCalendar = () => {
+  cachedAccessToken = null;
+  localStorage.removeItem('google_access_token');
+};
 
 export const checkGoogleCalendarAvailability = async (
   startTime: Date,
@@ -92,10 +122,11 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
   const durationInMinutes = appStatus.duration || 60;
   const endTime = new Date(startTime.getTime() + durationInMinutes * 60 * 1000);
 
-  const prefix = appStatus.is_return ? 'Retorno' : 'Novo Atendimento';
+  const prefix = appStatus.type === 'online' ? 'Online' : 'Presencial';
   
+  const displayDoctorName = doctorName.toLowerCase().startsWith('dr') ? doctorName : `Dr(a). ${doctorName}`;
   const event: any = {
-    summary: `${doctorName} / ${prefix} / ${patientName}`,
+    summary: `${displayDoctorName} | ${prefix} | ${patientName}`,
     description: `Consulta agendada pelo sistema CleanMind.\n\nPaciente: ${patientName}\nData: ${appStatus.date?.split('-').reverse().join('/')}\nHorário: ${appStatus.start_time}\n${room ? `Sala: ${room}\n` : ''}`,
     start: {
       dateTime: startTime.toISOString(),
@@ -140,6 +171,7 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
       const errText = await res.text();
       console.error("Failed to sync to calendar:", errText);
       if (res.status === 401 && !doctorToken) {
+        cachedAccessToken = null;
         localStorage.removeItem('google_access_token');
         alert("Sua conexão com o Google Calendar expirou. Por favor, autentique novamente nas configurações.");
       }
@@ -169,7 +201,10 @@ export const deleteGoogleCalendarEvent = async (eventId: string, doctorToken?: s
       headers: { 'Authorization': `Bearer ${tokenToUse}` }
     });
     if (!res.ok) {
-      if (res.status === 401 && !doctorToken) localStorage.removeItem('google_access_token');
+      if (res.status === 401 && !doctorToken) {
+        cachedAccessToken = null;
+        localStorage.removeItem('google_access_token');
+      }
       if (res.status === 410) {
         console.log("Calendar event already deleted");
         return;

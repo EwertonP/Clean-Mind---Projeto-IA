@@ -5,6 +5,7 @@ import { Billing as BillingType, Patient, dataManager } from '../data';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 
 import { useStore } from '../store';
+import Expenses from './Expenses';
 
 interface BillingProps {
   initialDraft?: { patientId: string; amount: string; dueDate: string } | null;
@@ -31,6 +32,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [activeTab, setActiveTab] = useState<'receitas' | 'despesas'>('receitas');
 
   // Chart Data calculation (Last 6 Months)
   const chartData = [];
@@ -156,32 +158,57 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
       </AnimatePresence>
 
       {/* Title */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <div>
           <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Financeiro</h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1 max-w-lg">
-            Faturamento automatizado, conciliação Pix síncrona e emissão automatizada de notas fiscais de serviço (NFS-e).
+            Gestão de receitas, faturamento automatizado e controle de despesas.
           </p>
         </div>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => {
-              setShowForm(!showForm);
-              if (!selectedPatientId && patients.length > 0) {
-                setSelectedPatientId(patients[0].id);
-              }
-            }}
-            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
-          >
-            <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Gerar Nova Fatura
-          </button>
-        </div>
+        {activeTab === 'receitas' && (
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => {
+                setShowForm(!showForm);
+                if (!selectedPatientId && patients.length > 0) {
+                  setSelectedPatientId(patients[0].id);
+                }
+              }}
+              className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
+            >
+              <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Gerar Nova Fatura
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* KPIs & Chart Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* KPI stats */}
+      <div className="flex space-x-2 border-b border-slate-200 mb-8">
+        <button
+          onClick={() => setActiveTab('receitas')}
+          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === 'receitas' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Receitas
+          {activeTab === 'receitas' && (
+            <motion.div layoutId="finance-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('despesas')}
+          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === 'despesas' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Despesas
+          {activeTab === 'despesas' && (
+            <motion.div layoutId="finance-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'receitas' ? (
+        <>
+          {/* KPIs & Chart Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* KPI stats */}
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
@@ -520,6 +547,10 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
           </table>
         </div>
       </div>
+          </>
+      ) : (
+        <Expenses />
+      )}
 
     </motion.div>
   );

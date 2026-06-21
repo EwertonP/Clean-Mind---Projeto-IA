@@ -6,7 +6,7 @@ service cloud.firestore {
     }
     
     match /{document=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }

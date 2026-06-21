@@ -74,6 +74,12 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
     return Object.keys(errors).length === 0;
   };
 
+  useEffect(() => {
+    if (!newPatientDoctorId && doctors.length > 0) {
+      setNewPatientDoctorId(doctors[0].id);
+    }
+  }, [doctors, newPatientDoctorId]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -88,8 +94,10 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
 
   const handleCreatePatient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm() || !newPatientDoctorId) return;
+    if (!validateForm()) return;
     
+    const assignedDoctorId = newPatientDoctorId || doctors[0]?.id || dataManager.getDoctor().id;
+
     // Add logic to save the new fields
     const list = dataManager.getPatients();
     
@@ -105,7 +113,8 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
       health_insurance: newPatientInsurance,
       status: 'active',
       tags: parsedTags.length > 0 ? parsedTags : undefined,
-      photo_url: newPatientPhotoUrl || undefined
+      photo_url: newPatientPhotoUrl || undefined,
+      doctor_id: assignedDoctorId
     });
     
     setNewPatientName('');

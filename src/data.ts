@@ -18,7 +18,7 @@ export interface Doctor {
   phone?: string;
   specialty: string;
   admin_id?: string;
-  role?: 'admin' | 'doctor';
+  role?: 'admin' | 'doctor' | 'agency';
   is_verified?: boolean;
   verification_code?: string;
   plan_type?: 'free' | 'premium' | 'pro';
@@ -114,6 +114,29 @@ export interface MedicalRecord {
   created_at: string;
 }
 
+export interface Assessment {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  type: 'PHQ-9' | 'GAD-7' | 'BDI-II' | 'BAI';
+  date: string;
+  score: number;
+  severity: string;
+  answers: number[];
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  doctor_id: string;
+  amount: number;
+  date: string;
+  category: 'água' | 'luz' | 'internet' | 'alimentação' | 'funcionários' | 'limpeza' | 'outros';
+  status: 'paid' | 'pending';
+  description?: string;
+  created_at: string;
+}
+
 // Initial Doctors List
 const INITIAL_DOCTORS: Doctor[] = [];
 
@@ -131,6 +154,12 @@ const INITIAL_DIARY: DiaryEntry[] = [];
 
 // Initial Medical Records
 const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [];
+
+// Initial Assessments
+const INITIAL_ASSESSMENTS: Assessment[] = [];
+
+// Initial Expenses
+const INITIAL_EXPENSES: Expense[] = [];
 
 // LocalStorage Helper Getters / Setters
 function getOrInit<T>(key: string, initial: T): T {
@@ -225,6 +254,9 @@ export const dataManager = {
     if (sessionId) {
       const doc = doctors.find(d => d.id === sessionId);
       if (doc) return doc;
+      // If we have a sessionId but can't find it in local storage, we should return a skeleton 
+      // instead of falling back to another user's account to avoid data leak.
+      return { id: sessionId, name: '', email: '', role: 'admin', is_configured: false, created_at: '' } as Doctor;
     }
     return doctors[0] || INITIAL_DOCTORS[0];
   },
@@ -280,12 +312,12 @@ export const dataManager = {
     persistToFirestore('patients', id, list[idx]);
     return list[idx];
   },
-  addPatient: (pat: Omit<Patient, 'id' | 'doctor_id' | 'created_at'>): Patient => {
+  addPatient: (pat: Omit<Patient, 'id' | 'created_at'> & { doctor_id?: string }): Patient => {
     const list = dataManager.getPatients();
     const newPat: Patient = {
       ...pat,
       id: `pat_${Date.now()}`,
-      doctor_id: dataManager.getDoctor().id,
+      doctor_id: pat.doctor_id || dataManager.getDoctor().id,
       created_at: new Date().toISOString()
     };
     list.push(newPat);
@@ -310,13 +342,13 @@ export const dataManager = {
     const allApps = getOrInit<Appointment[]>('cm_appointments', INITIAL_APPOINTMENTS).filter(a => a.doctor_id !== docId);
     save('cm_appointments', [...allApps, ...apps]);
   },
-  addAppointment: (app: Omit<Appointment, 'id' | 'doctor_id'>): Appointment => {
+  addAppointment: (app: Omit<Appointment, 'id' | 'doctor_id'> & { doctor_id?: string }): Appointment => {
     const list = dataManager.getAppointments();
     const patient = dataManager.getPatients().find(p => p.id === app.patient_id);
     const newApp: Appointment = {
       ...app,
       id: `app_${Date.now()}`,
-      doctor_id: patient?.doctor_id || dataManager.getDoctor().id
+      doctor_id: app.doctor_id || patient?.doctor_id || dataManager.getDoctor().id
     };
     list.push(newApp);
     dataManager.saveAppointments(list);
@@ -483,6 +515,68 @@ export const dataManager = {
     removeFirestoreDoc('medical_records', id);
   },
   
+  getAssessments: (): Assessment[] => {
+    const docId = dataManager.getDoctor().id;
+    return getOrInit<Assessment[]>('cm_assessments', INITIAL_ASSESSMENTS).filter(r => r.doctor_id === docId);
+  },
+  saveAssessments: (recs: Assessment[]) => {
+    const docId = dataManager.getDoctor().id;
+    const allRecs = getOrInit<Assessment[]>('cm_assessments', INITIAL_ASSESSMENTS).filter(r => r.doctor_id !== docId);
+    save('cm_assessments', [...allRecs, ...recs]);
+  },
+  addAssessment: (rec: Omit<Assessment, 'id' | 'doctor_id' | 'created_at'>): Assessment => {
+    const list = dataManager.getAssessments();
+    const patient = dataManager.getPatients().find(p => p.id === rec.patient_id);
+    const newRec: Assessment = {
+      ...rec,
+      id: `ass_${Date.now()}`,
+      doctor_id: patient?.doctor_id || dataManager.getDoctor().id,
+      created_at: new Date().toISOString()
+    };
+    list.push(newRec);
+    dataManager.saveAssessments(list);
+    persistToFirestore('assessments', newRec.id, newRec);
+    return newRec;
+  },
+
+  getExpenses: (): Expense[] => {
+    const docId = dataManager.getDoctor().id;
+    return getOrInit<Expense[]>('cm_expenses', INITIAL_EXPENSES).filter(r => r.doctor_id === docId);
+  },
+  saveExpenses: (exp: Expense[]) => {
+    const docId = dataManager.getDoctor().id;
+    const allExp = getOrInit<Expense[]>('cm_expenses', INITIAL_EXPENSES).filter(r => r.doctor_id !== docId);
+    save('cm_expenses', [...allExp, ...exp]);
+  },
+  addExpense: (exp: Omit<Expense, 'id' | 'doctor_id' | 'created_at'>): Expense => {
+    const list = dataManager.getExpenses();
+    const newExp: Expense = {
+      ...exp,
+      id: `exp_${Date.now()}`,
+      doctor_id: dataManager.getDoctor().id,
+      created_at: new Date().toISOString()
+    };
+    list.push(newExp);
+    dataManager.saveExpenses(list);
+    persistToFirestore('expenses', newExp.id, newExp);
+    return newExp;
+  },
+  updateExpense: (id: string, expData: Partial<Expense>): Expense | null => {
+    const list = dataManager.getExpenses();
+    const idx = list.findIndex(e => e.id === id);
+    if (idx < 0) return null;
+    list[idx] = { ...list[idx], ...expData };
+    dataManager.saveExpenses(list);
+    persistToFirestore('expenses', id, list[idx]);
+    return list[idx];
+  },
+  deleteExpense: (id: string): void => {
+    const list = dataManager.getExpenses();
+    const filtered = list.filter(e => e.id !== id);
+    dataManager.saveExpenses(filtered);
+    removeFirestoreDoc('expenses', id);
+  },
+  
   // Pulls all data for a doctor from Firestore and overwrites localStorage
   pullFromFirestore: async (doctorId: string): Promise<void> => {
     if (!auth.currentUser) return;
@@ -493,6 +587,8 @@ export const dataManager = {
       const bills = await getDocs(query(collection(db, 'billing'), where('doctor_id', '==', doctorId)));
       const medical = await getDocs(query(collection(db, 'medical_records'), where('doctor_id', '==', doctorId)));
       const diaryDocs = await getDocs(query(collection(db, 'diary'), where('doctor_id', '==', doctorId)));
+      const assessmentDocs = await getDocs(query(collection(db, 'assessments'), where('doctor_id', '==', doctorId)));
+      const expenseDocs = await getDocs(query(collection(db, 'expenses'), where('doctor_id', '==', doctorId)));
       
       const diaries = diaryDocs.docs.map(d => d.data() as DiaryEntry);
 
@@ -501,6 +597,8 @@ export const dataManager = {
       dataManager.saveBilling(bills.docs.map(d => d.data() as Billing));
       dataManager.saveMedicalRecords(medical.docs.map(d => d.data() as MedicalRecord));
       dataManager.saveDiaryEntries(diaries);
+      dataManager.saveAssessments(assessmentDocs.docs.map(d => d.data() as Assessment));
+      dataManager.saveExpenses(expenseDocs.docs.map(d => d.data() as Expense));
 
       // We should also pull the doctor doc itself and any created doctors
       let pulledDoctors: Doctor[] = [];
@@ -530,6 +628,7 @@ export const dataManager = {
     localStorage.removeItem('cm_billing');
     localStorage.removeItem('cm_diary');
     localStorage.removeItem('cm_medical_records');
+    localStorage.removeItem('cm_assessments');
     window.location.reload();
   }
 };

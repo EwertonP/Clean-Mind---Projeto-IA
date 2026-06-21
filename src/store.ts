@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { db, auth } from './firebase';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
-import { Patient, Appointment, Billing, DiaryEntry, MedicalRecord, Doctor } from './data';
+import { Patient, Appointment, Billing, DiaryEntry, MedicalRecord, Doctor, Assessment, Expense } from './data';
 
 interface AppState {
   patients: Patient[];
@@ -10,6 +10,8 @@ interface AppState {
   billing: Billing[];
   diary: DiaryEntry[];
   medicalRecords: MedicalRecord[];
+  assessments: Assessment[];
+  expenses: Expense[];
   isLoading: boolean;
   
   initSync: (doctorId: string) => () => void;
@@ -22,12 +24,14 @@ export const useStore = create<AppState>((set) => ({
   billing: [],
   diary: [],
   medicalRecords: [],
+  assessments: [],
+  expenses: [],
   isLoading: true,
 
   initSync: (doctorId: string) => {
     if (!doctorId) return () => {};
     
-    set({ isLoading: true });
+    set({ isLoading: true, patients: [], appointments: [], billing: [], diary: [], medicalRecords: [], assessments: [], expenses: [], doctors: [] });
 
     let loadedCount = 0;
     const checkLoaded = () => {
@@ -37,30 +41,70 @@ export const useStore = create<AppState>((set) => ({
       }
     };
 
-    const unsubPatients = onSnapshot(query(collection(db, 'patients'), where('doctor_id', '==', doctorId)), (snapshot) => {
-      set({ patients: snapshot.docs.map(d => d.data() as Patient) });
-      checkLoaded();
-    });
+    const activeListeners: Record<string, (() => void)[]> = {};
 
-    const unsubAppointments = onSnapshot(query(collection(db, 'appointments'), where('doctor_id', '==', doctorId)), (snapshot) => {
-      set({ appointments: snapshot.docs.map(d => d.data() as Appointment) });
-      checkLoaded();
-    });
+    const startListenersForDoc = (dId: string) => {
+      if (activeListeners[dId]) return;
+      activeListeners[dId] = [
+        onSnapshot(query(collection(db, 'patients'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.patients.filter(p => p && p.doctor_id !== dId);
+            return { patients: [...others, ...snapshot.docs.map(d => d.data() as Patient).filter(Boolean)] };
+          });
+          checkLoaded();
+        }),
+        onSnapshot(query(collection(db, 'appointments'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.appointments.filter(a => a && a.doctor_id !== dId);
+            return { appointments: [...others, ...snapshot.docs.map(d => d.data() as Appointment).filter(Boolean)] };
+          });
+          checkLoaded();
+        }),
+        onSnapshot(query(collection(db, 'billing'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.billing.filter(b => b && b.doctor_id !== dId);
+            return { billing: [...others, ...snapshot.docs.map(d => d.data() as Billing).filter(Boolean)] };
+          });
+          checkLoaded();
+        }),
+        onSnapshot(query(collection(db, 'diary'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.diary.filter(d => d && d.doctor_id !== dId);
+            return { diary: [...others, ...snapshot.docs.map(d => d.data() as DiaryEntry).filter(Boolean)] };
+          });
+          checkLoaded();
+        }),
+        onSnapshot(query(collection(db, 'medical_records'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.medicalRecords.filter(m => m && m.doctor_id !== dId);
+            return { medicalRecords: [...others, ...snapshot.docs.map(d => d.data() as MedicalRecord).filter(Boolean)] };
+          });
+          checkLoaded();
+        }),
+        onSnapshot(query(collection(db, 'assessments'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.assessments.filter(a => a && a.doctor_id !== dId);
+            return { assessments: [...others, ...snapshot.docs.map(d => d.data() as Assessment).filter(Boolean)] };
+          });
+        }),
+        onSnapshot(query(collection(db, 'expenses'), where('doctor_id', '==', dId)), (snapshot) => {
+          set(state => {
+            const others = state.expenses.filter(e => e && e.doctor_id !== dId);
+            return { expenses: [...others, ...snapshot.docs.map(d => d.data() as Expense).filter(Boolean)] };
+          });
+        })
+      ];
+    };
 
-    const unsubBilling = onSnapshot(query(collection(db, 'billing'), where('doctor_id', '==', doctorId)), (snapshot) => {
-      set({ billing: snapshot.docs.map(d => d.data() as Billing) });
-      checkLoaded();
-    });
+    const stopListenersForDoc = (dId: string) => {
+      if (activeListeners[dId]) {
+        activeListeners[dId].forEach(unsub => unsub());
+        delete activeListeners[dId];
+      }
+    };
 
-    const unsubDiary = onSnapshot(query(collection(db, 'diary'), where('doctor_id', '==', doctorId)), (snapshot) => {
-      set({ diary: snapshot.docs.map(d => d.data() as DiaryEntry) });
-      checkLoaded();
-    });
-
-    const unsubMedicalRecords = onSnapshot(query(collection(db, 'medical_records'), where('doctor_id', '==', doctorId)), (snapshot) => {
-      set({ medicalRecords: snapshot.docs.map(d => d.data() as MedicalRecord) });
-      checkLoaded();
-    });
+    // Start listeners for the logged-in user
+    startListenersForDoc(doctorId);
 
     const unsubDoctorsAdmin = onSnapshot(query(collection(db, 'doctors'), where('admin_id', '==', doctorId)), (snapshot) => {
       set((state) => {
@@ -70,6 +114,12 @@ export const useStore = create<AppState>((set) => ({
         if (myDoc && !newDocs.find(d => d.id === myDoc.id)) {
            newDocs.push(myDoc);
         }
+        
+        // Start listeners for any new managed doctors
+        others.forEach(doc => {
+          startListenersForDoc(doc.id);
+        });
+        
         return { doctors: newDocs };
       });
     });
@@ -85,11 +135,8 @@ export const useStore = create<AppState>((set) => ({
     });
 
     return () => {
-      unsubPatients();
-      unsubAppointments();
-      unsubBilling();
-      unsubDiary();
-      unsubMedicalRecords();
+      // Unsubscribe all active listeners
+      Object.keys(activeListeners).forEach(dId => stopListenersForDoc(dId));
       unsubDoctorsAdmin();
       unsubMyDoc();
     };
