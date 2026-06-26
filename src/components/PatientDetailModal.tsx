@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download, Image as ImageIcon, Trash2, TrendingUp, TrendingDown, Minus, Filter, AlertTriangle } from 'lucide-react';
 import { Patient, dataManager, compressImage } from '../data';
 import Markdown from 'react-markdown';
 import jsPDF from 'jspdf';
 import { maskPhone } from '../utils/masks';
 import { useStore } from '../store';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface PatientDetailModalProps {
   patient: Patient;
@@ -22,6 +23,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
   const [medicalHistory, setMedicalHistory] = useState(patient.medical_history || '');
   const [isEditingMedicalHistory, setIsEditingMedicalHistory] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [diaryFilter, setDiaryFilter] = useState<'all' | 'crises'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [editProfileForm, setEditProfileForm] = useState({
@@ -83,8 +85,8 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
     setIsEditingProfile(false);
   };
 
-  const appointments = appointmentsStore.filter(a => a.patient_id === patient.id);
-  const diaryEntries = diaryStore.filter(d => d.patient_id === patient.id).reverse();
+  const appointments = appointmentsStore.filter(a => a && a.date && a.patient_id === patient.id);
+  const diaryEntries = diaryStore.filter(d => d && d.patient_id === patient.id).reverse();
 
   const fakeData = extraData || {
     diag: 'Avaliação',
@@ -246,48 +248,48 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
-                  <input type="text" value={editProfileForm.name} onChange={e => setEditProfileForm({...editProfileForm, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                  <input type="text" value={editProfileForm.name} onChange={e => setEditProfileForm({...editProfileForm, name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-status-success focus:ring-1 focus:ring-status-success" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">E-mail</label>
-                  <input type="email" value={editProfileForm.email} onChange={e => setEditProfileForm({...editProfileForm, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                  <input type="email" value={editProfileForm.email} onChange={e => setEditProfileForm({...editProfileForm, email: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-status-success focus:ring-1 focus:ring-status-success" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Celular</label>
-                  <input type="text" value={editProfileForm.phone} onChange={e => setEditProfileForm({...editProfileForm, phone: maskPhone(e.target.value)})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                  <input type="text" value={editProfileForm.phone} onChange={e => setEditProfileForm({...editProfileForm, phone: maskPhone(e.target.value)})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-status-success focus:ring-1 focus:ring-status-success" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Plano de Saúde</label>
-                  <input type="text" value={editProfileForm.health_insurance} onChange={e => setEditProfileForm({...editProfileForm, health_insurance: e.target.value})} placeholder="Ex: Unimed, Particular" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                  <input type="text" value={editProfileForm.health_insurance} onChange={e => setEditProfileForm({...editProfileForm, health_insurance: e.target.value})} placeholder="Ex: Unimed, Particular" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-status-success focus:ring-1 focus:ring-status-success" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Tags (separadas por vírgula)</label>
-                  <input type="text" value={editProfileForm.tags} onChange={e => setEditProfileForm({...editProfileForm, tags: e.target.value})} placeholder="Ex: Risco, Avaliação" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]" />
+                  <input type="text" value={editProfileForm.tags} onChange={e => setEditProfileForm({...editProfileForm, tags: e.target.value})} placeholder="Ex: Risco, Avaliação" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-status-success focus:ring-1 focus:ring-status-success" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Histórico Médico</label>
-                  <textarea value={editProfileForm.medical_history} onChange={e => setEditProfileForm({...editProfileForm, medical_history: e.target.value})} rows={3} placeholder="Alergias, medicações, condições..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#C1E2A4] focus:ring-1 focus:ring-[#C1E2A4]"></textarea>
+                  <textarea value={editProfileForm.medical_history} onChange={e => setEditProfileForm({...editProfileForm, medical_history: e.target.value})} rows={3} placeholder="Alergias, medicações, condições..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-status-success focus:ring-1 focus:ring-status-success"></textarea>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setIsEditingProfile(false)} className="px-5 py-2 text-sm text-slate-600 font-semibold hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">Cancelar</button>
-                <button onClick={handleSaveProfile} className="bg-[#C1E2A4] text-[#192F28] text-sm border border-[#b0d292] font-bold px-5 py-2 rounded-lg hover:bg-[#b0d292] transition-colors cursor-pointer shadow-sm flex items-center gap-2"><Check className="w-4 h-4" /> Salvar Alterações</button>
+                <button onClick={handleSaveProfile} className="bg-status-success text-brand-primary text-sm border border-[#b0d292] font-bold px-5 py-2 rounded-lg hover:bg-[#b0d292] transition-colors cursor-pointer shadow-sm flex items-center gap-2"><Check className="w-4 h-4" /> Salvar Alterações</button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between w-full">
               <div className="flex items-center space-x-5">
-                <div className="w-20 h-20 rounded-full bg-[#C1E2A4]/30 border border-[#C1E2A4] flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                <div className="w-20 h-20 rounded-full bg-status-success/30 border border-status-success flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
                   {patient.photo_url ? (
                     <img src={patient.photo_url} alt={patient.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-3xl font-bold text-[#192F28]">{patient.name.charAt(0)}</span>
+                    <span className="text-3xl font-bold text-brand-primary">{patient.name.charAt(0)}</span>
                   )}
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
                     {patient.name}
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${fakeData.status === 'Inativo' ? 'bg-slate-200 text-slate-600' : 'bg-[#C1E2A4] text-[#192F28]'}`}>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${fakeData.status === 'Inativo' ? 'bg-slate-200 text-slate-600' : 'bg-status-success text-brand-primary'}`}>
                       {fakeData.status}
                     </span>
                   </h2>
@@ -303,10 +305,10 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                         const norm = tag.toLowerCase().trim();
                         let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
                         if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
-                        else if (norm.includes('acompanhamento')) colorClass = 'bg-sky-100 text-sky-700 border-sky-200';
+                        else if (norm.includes('acompanhamento')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                         else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
-                        else if (norm.includes('alta')) colorClass = 'bg-[#C1E2A4]/40 text-[#192F28] border-[#C1E2A4]/50';
-                        else colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                        else if (norm.includes('alta')) colorClass = 'bg-status-success/40 text-brand-primary border-status-success/50';
+                        else colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                         
                         return (
                           <span key={idx} className={`text-xs uppercase font-bold px-2 py-0.5 rounded border ${colorClass} tracking-wide whitespace-nowrap leading-none`}>
@@ -382,26 +384,26 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab('clinicos')}
-              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer ${activeTab === 'clinicos' ? 'border-[#C1E2A4] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer ${activeTab === 'clinicos' ? 'border-status-success text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Dados Clínicos
             </button>
             <button
               onClick={() => setActiveTab('consultas')}
-              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'consultas' ? 'border-[#C1E2A4] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'consultas' ? 'border-status-success text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Histórico de Consultas
               <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full">{appointments.length}</span>
             </button>
             <button
               onClick={() => setActiveTab('prontuarios')}
-              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer ${activeTab === 'prontuarios' ? 'border-[#C1E2A4] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer ${activeTab === 'prontuarios' ? 'border-status-success text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Prontuários NGS2
             </button>
             <button
               onClick={() => setActiveTab('diario')}
-              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'diario' ? 'border-[#C1E2A4] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`py-4 text-sm font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'diario' ? 'border-status-success text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Diário do Paciente
               <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full">{diaryEntries.length}</span>
@@ -418,12 +420,12 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                       <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-[#192F28]/70" /> Diagnóstico e Tratamento
+                        <Shield className="h-5 w-5 text-brand-primary/70" /> Diagnóstico e Tratamento
                       </h3>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="block text-slate-500 mb-1">Diagnóstico Inicial</span>
-                          <span className="font-semibold text-slate-900 px-2 py-1 bg-blue-50 text-blue-700 rounded-md inline-block">{fakeData.diag}</span>
+                          <span className="font-semibold text-slate-900 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md inline-block">{fakeData.diag}</span>
                         </div>
                         <div>
                           <span className="block text-slate-500 mb-1">Total de Sessões</span>
@@ -434,12 +436,12 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
 
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                       <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                        <User className="h-5 w-5 text-blue-500" /> Informações Pessoais
+                        <User className="h-5 w-5 text-status-success" /> Informações Pessoais
                       </h3>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="block text-slate-500 mb-1">Status de Cadastro</span>
-                          <span className={`font-semibold ${fakeData.status === 'Inativo' ? 'text-slate-600' : 'text-[#192F28]'}`}>{fakeData.status}</span>
+                          <span className={`font-semibold ${fakeData.status === 'Inativo' ? 'text-slate-600' : 'text-brand-primary'}`}>{fakeData.status}</span>
                         </div>
                         <div>
                           <span className="block text-slate-500 mb-1">Paciente Desde</span>
@@ -453,7 +455,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
                     <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-b border-slate-200">
                       <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                        <BookOpen className="h-4 w-4 text-[#192F28]" /> Histórico Médico e Antecedentes
+                        <BookOpen className="h-4 w-4 text-brand-primary" /> Histórico Médico e Antecedentes
                       </h3>
                       <button 
                         onClick={() => {
@@ -464,7 +466,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                         }}
                         className="text-slate-500 hover:text-slate-700 transition-colors p-1 cursor-pointer"
                       >
-                        {isEditingMedicalHistory ? <Check className="h-4 w-4 text-[#192F28]" /> : <Edit3 className="h-4 w-4" />}
+                        {isEditingMedicalHistory ? <Check className="h-4 w-4 text-brand-primary" /> : <Edit3 className="h-4 w-4" />}
                       </button>
                     </div>
                     <div className="p-6">
@@ -473,7 +475,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                           value={medicalHistory}
                           onChange={(e) => setMedicalHistory(e.target.value)}
                           placeholder="Adicione alergias, doenças crônicas, cirurgias ou histórico familiar..."
-                          className="w-full bg-slate-50 rounded-lg border border-slate-200 focus:border-[#C1E2A4] focus:ring-4 focus:ring-[#C1E2A4]/10 resize-y min-h-[120px] text-slate-900 placeholder:text-slate-400 p-4 text-sm leading-relaxed outline-none transition-all"
+                          className="w-full bg-slate-50 rounded-lg border border-slate-200 focus:border-status-success focus:ring-4 focus:ring-status-success/10 resize-y min-h-[120px] text-slate-900 placeholder:text-slate-400 p-4 text-sm leading-relaxed outline-none transition-all"
                           autoFocus
                         />
                       ) : (
@@ -488,7 +490,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                                   h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2 text-slate-800" {...props} />,
                                   h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2 text-slate-800" {...props} />,
                                   h3: ({node, ...props}) => <h3 className="text-sm font-bold mb-1 text-slate-800" {...props} />,
-                                  a: ({node, ...props}) => <a className="underline text-[#192F28] hover:text-[#192F28]/70" {...props} />,
+                                  a: ({node, ...props}) => <a className="underline text-brand-primary hover:text-brand-primary/70" {...props} />,
                                   strong: ({node, ...props}) => <strong className="font-bold text-slate-800" {...props} />
                                 }}
                               >
@@ -562,7 +564,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                 <div className="space-y-6">
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-4">
-                      <Calendar className="h-4 w-4 text-indigo-500" /> Próximos Agendamentos
+                      <Calendar className="h-4 w-4 text-status-success" /> Próximos Agendamentos
                     </h3>
                     <div className="space-y-3">
                       {appointments
@@ -570,12 +572,12 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                         .sort((a, b) => new Date(`${a.date.split('/').reverse().join('-')}T${a.start_time}`).getTime() - new Date(`${b.date.split('/').reverse().join('-')}T${b.start_time}`).getTime())
                         .slice(0, 3)
                         .map((appt, idx) => (
-                        <div key={appt.id || idx} className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 flex flex-col gap-1.5">
+                        <div key={appt.id || idx} className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 flex flex-col gap-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-indigo-900">{appt.date}</span>
-                            <span className="text-[10px] uppercase tracking-wider font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{appt.start_time}</span>
+                            <span className="text-xs font-bold text-emerald-900">{appt.date}</span>
+                            <span className="text-[10px] uppercase tracking-wider font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{appt.start_time}</span>
                           </div>
-                          <span className="text-xs text-indigo-800 capitalize font-medium">{appt.type}</span>
+                          <span className="text-xs text-emerald-800 capitalize font-medium">{appt.type}</span>
                         </div>
                       ))}
                       {appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length === 0 && (
@@ -585,7 +587,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                       )}
                     </div>
                     {appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length > 0 && (
-                      <button onClick={() => setActiveTab('consultas')} className="mt-4 w-full py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer text-center">
+                      <button onClick={() => setActiveTab('consultas')} className="mt-4 w-full py-2 text-xs font-bold text-brand-primary bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer text-center">
                         Ver histórico completo
                       </button>
                     )}
@@ -615,7 +617,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                             app.status === 'completed' ? 'bg-slate-100 text-slate-600' :
                             app.status === 'canceled' ? 'bg-red-50 text-red-600' :
-                            'bg-[#C1E2A4]/20 text-[#192F28]'
+                            'bg-status-success/20 text-brand-primary'
                           }`}>
                             {app.status}
                           </span>
@@ -642,34 +644,128 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
           )}
 
           {activeTab === 'diario' && (
-            <div className="space-y-6 max-w-3xl mx-auto">
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 text-sm text-blue-800">
-                Resumo das reflexões enviadas pelo paciente via WhatsApp integrado.
-              </div>
-              
-              {diaryEntries.length > 0 ? (
-                <div className="space-y-4">
-                  {diaryEntries.map(entry => (
-                    <div key={entry.id} className={`bg-white border p-5 rounded-2xl shadow-sm ${entry.crisis_flag ? 'border-red-200' : 'border-slate-200'}`}>
-                      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
-                        <span className="text-sm font-semibold text-slate-500 font-mono flex items-center gap-2">
-                           <Clock className="h-4 w-4" />
-                           {new Date(entry.created_at).toLocaleString('pt-BR')}
-                        </span>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wide ${entry.crisis_flag ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-600'}`}>
-                          Mood: {entry.sentiment_score}
-                        </span>
+            <div className="space-y-6 max-w-4xl mx-auto">
+              <div className="flex flex-col md:flex-row gap-6">
+                
+                {/* Left Side: Chart & Summary */}
+                {diaryEntries.length > 0 && (
+                  <div className="w-full md:w-1/3 flex flex-col gap-6 shrink-0">
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                      <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-status-success" /> Evolução de Humor
+                      </h3>
+                      <div className="h-[180px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={[...diaryEntries].reverse().map(e => ({
+                            data: new Date(e.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                            humor: e.sentiment_score
+                          }))} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorHumor" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#76A34A" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#76A34A" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="data" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[-1, 1]} />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                              itemStyle={{ color: '#1e293b', fontSize: '12px', fontWeight: 'bold' }}
+                              labelStyle={{ color: '#64748b', fontSize: '10px', marginBottom: '4px' }}
+                            />
+                            <Area type="monotone" dataKey="humor" stroke="#76A34A" strokeWidth={2} fillOpacity={1} fill="url(#colorHumor)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
-                      <p className="text-slate-800 leading-relaxed">{entry.content}</p>
                     </div>
-                  ))}
+                    
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+                       <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-slate-400" /> Filtros
+                      </h3>
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-3 p-2 hover:bg-slate-50 border border-transparent rounded-lg cursor-pointer transition-colors">
+                          <input 
+                            type="radio" 
+                            checked={diaryFilter === 'all'} 
+                            onChange={() => setDiaryFilter('all')}
+                            className="text-brand-primary focus:ring-brand-primary h-4 w-4"
+                          />
+                          <span className="text-sm font-medium text-slate-700">Todos os registros ({diaryEntries.length})</span>
+                        </label>
+                        <label className="flex items-center space-x-3 p-2 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg cursor-pointer transition-colors">
+                          <input 
+                            type="radio" 
+                            checked={diaryFilter === 'crises'} 
+                            onChange={() => setDiaryFilter('crises')}
+                            className="text-red-500 focus:ring-red-500 h-4 w-4"
+                          />
+                          <span className="text-sm font-medium text-red-700">Apenas Crises ({diaryEntries.filter(e => e.crisis_flag).length})</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Right Side: Entries List */}
+                <div className="flex-1">
+                  <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl mb-6 text-sm text-emerald-800 flex items-start gap-3">
+                    <Check className="h-5 w-5 text-status-success shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-semibold block mb-1">WhatsApp Integrado</strong>
+                      Resumo das reflexões e sentimentos capturados via mensagens do paciente com o bot da clínica.
+                    </div>
+                  </div>
+                  
+                  {diaryEntries.length > 0 ? (
+                    <div className="space-y-4">
+                      {diaryEntries
+                        .filter(e => diaryFilter === 'all' || (diaryFilter === 'crises' && e.crisis_flag))
+                        .map(entry => (
+                        <div key={entry.id} className={`bg-white border p-5 rounded-2xl shadow-sm relative overflow-hidden transition-colors ${entry.crisis_flag ? 'border-red-200' : 'border-slate-200'}`}>
+                          {entry.crisis_flag && (
+                            <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>
+                          )}
+                          <div className="flex items-center justify-between mb-3 pb-3">
+                            <span className="text-sm font-semibold text-slate-500 flex items-center gap-2">
+                               <Clock className="h-4 w-4 text-slate-400" />
+                               {new Date(entry.created_at).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })} às {new Date(entry.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {entry.crisis_flag && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-red-50 text-red-600 uppercase tracking-wide">
+                                  <AlertTriangle className="h-3 w-3" /> Alerta
+                                </span>
+                              )}
+                              <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wide border ${
+                                entry.sentiment_score >= 0.5 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                entry.sentiment_score <= -0.5 ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}>
+                                Mood {entry.sentiment_score > 0 ? '+' : ''}{entry.sentiment_score}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-slate-700 leading-relaxed text-[15px] whitespace-pre-wrap">{entry.content}</p>
+                        </div>
+                      ))}
+                      
+                      {diaryEntries.filter(e => diaryFilter === 'all' || (diaryFilter === 'crises' && e.crisis_flag)).length === 0 && (
+                        <div className="text-center py-10 bg-white border border-slate-200 rounded-2xl border-dashed">
+                          <p className="text-slate-500 font-medium">Nenhum registro encontrado para este filtro.</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                      <BookOpen className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                      <h4 className="font-bold text-slate-700 mb-2">Sem registros</h4>
+                      <p className="text-slate-500 max-w-sm mx-auto text-sm">O paciente ainda não enviou reflexões para o seu diário clínico. Convide-o a interagir via WhatsApp.</p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center py-12 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                  <BookOpen className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500">O paciente ainda não registrou entradas no diário.</p>
-                </div>
-              )}
+              </div>
             </div>
           )}
           </div>

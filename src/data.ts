@@ -54,6 +54,7 @@ export interface Patient {
   name: string;
   email: string;
   phone: string;
+  cpf?: string;
   health_insurance?: string;
   medical_history?: string;
   status: 'active' | 'inactive' | 'archived';
@@ -202,10 +203,8 @@ function cleanForFirestore(obj: any): any {
 
 async function persistToFirestore(collectionName: string, id: string, docData: any) {
   try {
-    if (auth.currentUser) {
-      const cleanData = cleanForFirestore(docData);
-      await setDoc(doc(db, collectionName, id), cleanData, { merge: true });
-    }
+    const cleanData = cleanForFirestore(docData);
+    await setDoc(doc(db, collectionName, id), cleanData, { merge: true });
   } catch (err) {
     console.error('Failed to sync to Firestore: ', err);
   }
@@ -213,9 +212,7 @@ async function persistToFirestore(collectionName: string, id: string, docData: a
 
 async function removeFirestoreDoc(collectionName: string, id: string) {
   try {
-    if (auth.currentUser) {
-      await deleteDoc(doc(db, collectionName, id));
-    }
+    await deleteDoc(doc(db, collectionName, id));
   } catch (err) {
     console.error('Failed to delete from Firestore: ', err);
   }
@@ -424,7 +421,7 @@ export const dataManager = {
     persistToFirestore('diary', id, list[idx]);
     return list[idx];
   },
-  addDiaryEntry: (patient_id: string, content: string): DiaryEntry => {
+  addDiaryEntry: (patient_id: string, content: string, explicit_doctor_id?: string): DiaryEntry => {
     const list = dataManager.getDiaryEntries();
     
     // Quick heuristic analyzer simulating AWS/OpenAI/Gemini clinical mood triage
@@ -463,7 +460,7 @@ export const dataManager = {
     const newEntry: DiaryEntry = {
       id: `diary_${Date.now()}`,
       patient_id,
-      doctor_id: patient?.doctor_id || dataManager.getDoctor().id,
+      doctor_id: explicit_doctor_id || patient?.doctor_id || dataManager.getDoctor().id,
       content,
       sentiment_score: parseFloat(score.toFixed(2)),
       crisis_flag: isCrisis,

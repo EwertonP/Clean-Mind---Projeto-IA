@@ -11,11 +11,10 @@ interface AgendaProps {
 }
 
 export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps) {
-  const patients = useStore(state => state.patients);
-  const appointmentsStore = useStore(state => state.appointments);
-  const doctorsStore = useStore(state => state.doctors);
+  const patientsStore = useStore(state => state.patients); const patients = useMemo(() => patientsStore.filter(Boolean), [patientsStore]);
+  const appointmentsStore = useStore(state => state.appointments); const appointments = useMemo(() => appointmentsStore.filter(a => a && a.date), [appointmentsStore]);
+  const doctorsStoreStore = useStore(state => state.doctors); const doctorsStore = useMemo(() => doctorsStoreStore.filter(Boolean), [doctorsStoreStore]);
 
-  const appointments = appointmentsStore;
   const doctors = doctorsStore.filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
   
   // Form State
@@ -177,9 +176,23 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
       const doctorName = doc?.name?.trim() ? doc.name : 'Médico';
       const actualRoom = newApp.type === 'presencial' ? newApp.room : undefined;
       const pat = patients.find(p => p.id === selectedPatientId);
-      const syncResult = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom, doctorToken, pat?.email);
-      if (syncResult?.eventId && !newApp.google_event_id) {
-        newApp = dataManager.updateAppointment(newApp.id, { google_event_id: syncResult.eventId });
+      
+      let meetLinkToUse: string | undefined = undefined;
+      
+      try {
+        const syncResult = await syncGoogleCalendarEvent(newApp, getPatientName(selectedPatientId), doctorName, actualRoom, doctorToken, pat?.email);
+        if (syncResult?.eventId) {
+          meetLinkToUse = syncResult.meetLink;
+          if (!newApp.google_event_id) {
+            newApp = dataManager.updateAppointment(newApp.id, { google_event_id: syncResult.eventId });
+          }
+          setToastMessage('Agendamento realizado e sincronizado com o Google Calendar');
+        } else {
+          setToastMessage('Agendamento realizado (não sincronizado no Google Calendar devido a token expirado)');
+        }
+      } catch (err) {
+        console.error("Calendar sync error", err);
+        setToastMessage('Agendamento realizado (Falha na sincronização do Calendário)');
       }
       
       if (pat && pat.email) {
@@ -191,7 +204,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
              newApp.date, 
              newApp.start_time, 
              newApp.type, 
-             syncResult?.meetLink, 
+             meetLinkToUse, 
              actualRoom ? `${doctorName} - ${actualRoom}` : doctorName, 
              doctorName
            ).then(() => {
@@ -199,10 +212,9 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
            });
         }
       }
+    } else {
+      setToastMessage('Agendamento realizado');
     }
-    
-    // Simulate WhatsApp Dispatch
-    setToastMessage('Agendamento realizado');
     
     // Reset Form
     setShowForm(false);
@@ -338,9 +350,9 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
 
   const getAppointmentColorStyle = (isReturn: boolean | undefined) => {
     if (isReturn) {
-      return 'bg-[#192F28] text-white';
+      return 'bg-brand-primary text-white';
     }
-    return 'bg-[#C1E2A4] text-[#192F28]';
+    return 'bg-status-success text-brand-primary';
   };
 
   const getWeekDays = (date: Date) => {
@@ -399,7 +411,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     setCurrentDate(new Date());
   };
 
-  const colors = ['bg-[#C1E2A4]', 'bg-blue-200', 'bg-orange-200', 'bg-purple-200', 'bg-pink-200'];
+  const colors = ['bg-status-success', 'bg-emerald-200', 'bg-orange-200', 'bg-emerald-200', 'bg-pink-200'];
   const getAppointmentsForSlot = (isoDate: string, time: string) => {
     const slotHour = parseInt(time.split(':')[0], 10);
     return appointments.filter(app => {
@@ -435,7 +447,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -493,7 +505,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div className="flex items-center space-x-2 text-slate-900">
-                  <CalendarIcon className="h-5 w-5 text-[#192F28]/70" />
+                  <CalendarIcon className="h-5 w-5 text-brand-primary/70" />
                   <h3 className="font-bold text-lg">{editingAppointmentId ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
                 </div>
                 <button 
@@ -507,11 +519,11 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               
               <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* WhatsApp Banner */}
-              <div className="bg-[#C1E2A4]/20 border border-[#C1E2A4]/30 rounded-xl p-4 flex items-start space-x-3">
-                <MessageSquare className="h-5 w-5 text-[#192F28] shrink-0 mt-0.5" />
+              <div className="bg-status-success/20 border border-status-success/30 rounded-xl p-4 flex items-start space-x-3">
+                <MessageSquare className="h-5 w-5 text-brand-primary shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-[#192F28] font-bold text-sm">Integração WhatsApp Nativa</h4>
-                  <p className="text-[#192F28]/80 text-xs mt-0.5">Confirmação automática enviada ao paciente + Lembrete 24h antes + Link para reagendamento.</p>
+                  <h4 className="text-brand-primary font-bold text-sm">Integração WhatsApp Nativa</h4>
+                  <p className="text-brand-primary/80 text-xs mt-0.5">Confirmação automática enviada ao paciente + Lembrete 24h antes + Link para reagendamento.</p>
                 </div>
               </div>
 
@@ -522,7 +534,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                   <select
                     value={appointmentType}
                     onChange={(e) => setAppointmentType(e.target.value as any)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   >
                     <option value="novo">Novo Atendimento</option>
                     <option value="retorno">Retorno</option>
@@ -535,7 +547,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                     required
                     value={selectedPatientId}
                     onChange={(e) => setSelectedPatientId(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   >
                     {patients.length === 0 ? (
                       <option value="">Carregue pacientes...</option>
@@ -558,7 +570,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                         required
                         value={consultationPrice}
                         onChange={(e) => setConsultationPrice(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                        className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                       />
                     </div>
                     <p className="text-xs text-slate-500 mt-1.5">Este valor será enviado automaticamente para o módulo financeiro e fluxo de faturamento.</p>
@@ -572,7 +584,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   />
                 </div>
 
@@ -585,7 +597,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                     max={doctors.find(d => d.id === (configDoctorId || (doctors[0] ? doctors[0].id : '')))?.business_hours?.end || "18:00"}
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   />
                 </div>
 
@@ -596,7 +608,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                       <select
                         value={type}
                         onChange={(e) => setType(e.target.value as any)}
-                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                       >
                          <option value="online">Terapia Individual (Online)</option>
                          <option value="presencial">Terapia Individual (Presencial)</option>
@@ -608,7 +620,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                       <select
                         value={duration}
                         onChange={(e) => setDuration(Number(e.target.value))}
-                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                        className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                       >
                         <option value={60}>1 hora (1 Sessão)</option>
                         <option value={120}>2 horas (2 Sessões)</option>
@@ -624,7 +636,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                         <select
                           value={room}
                           onChange={(e) => setRoom(e.target.value)}
-                          className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                          className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                         >
                           {(doctors.find(d => d.id === (configDoctorId || (doctors[0] ? doctors[0].id : '')))?.clinic_rooms || ['Sala 1']).map(r => (
                             <option key={r} value={r}>{r}</option>
@@ -637,36 +649,36 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               </div>
 
               {/* Sync Banner */}
-              <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 space-y-4">
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 space-y-4">
                 <div className="flex items-start space-x-3">
-                  <Sparkles className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                  <Sparkles className="h-5 w-5 text-status-success shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-blue-900 font-bold text-sm">Sincronização Inteligente de Horários</h4>
-                    <p className="text-blue-700/80 text-xs mt-0.5">O cleanmind verifica automaticamente conflitos, sugere horários disponíveis e exporta para o seu Google Calendar.</p>
+                    <h4 className="text-emerald-900 font-bold text-sm">Sincronização Inteligente de Horários</h4>
+                    <p className="text-emerald-700/80 text-xs mt-0.5">O cleanmind verifica automaticamente conflitos, sugere horários disponíveis e exporta para o seu Google Calendar.</p>
                   </div>
                 </div>
                 
-                <div className="space-y-3 bg-white rounded-lg p-4 border border-blue-100">
+                <div className="space-y-3 bg-white rounded-lg p-4 border border-emerald-100">
                   <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center space-x-3">
-                      <MessageSquare className="h-4 w-4 text-[#192F28]/70" />
+                      <MessageSquare className="h-4 w-4 text-brand-primary/70" />
                       <div>
                         <span className="block text-sm font-bold text-slate-700">Enviar confirmação via WhatsApp</span>
                         <span className="block text-xs text-slate-500">Mensagem automática com data, hora e link</span>
                       </div>
                     </div>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 text-[#192F28]/70 border-slate-300 rounded focus:ring-[#C1E2A4]" />
+                    <input type="checkbox" defaultChecked className="w-4 h-4 text-brand-primary/70 border-slate-300 rounded focus:ring-status-success" />
                   </label>
                   <div className="border-t border-slate-100"></div>
                   <label className="flex items-center justify-between cursor-pointer pt-1">
                     <div className="flex items-center space-x-3">
-                      <RefreshCw className="h-4 w-4 text-blue-500" />
+                      <RefreshCw className="h-4 w-4 text-status-success" />
                       <div>
                         <span className="block text-sm font-bold text-slate-700">Exportar para o Google Calendar</span>
                         <span className="block text-xs text-slate-500">Atualização automática em tempo real</span>
                       </div>
                     </div>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 text-blue-500 border-slate-300 rounded focus:ring-blue-500" />
+                    <input type="checkbox" defaultChecked className="w-4 h-4 text-status-success border-slate-300 rounded focus:ring-status-success" />
                   </label>
                 </div>
               </div>
@@ -712,7 +724,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 text-sm font-bold bg-[#C1E2A4] text-slate-900 rounded-lg hover:bg-[#b0d292] transition-colors cursor-pointer shadow-sm border border-[#b0d292]"
+                  className="px-6 py-2.5 text-sm font-bold bg-status-success text-slate-900 rounded-lg hover:bg-[#b0d292] transition-colors cursor-pointer shadow-sm border border-[#b0d292]"
                 >
                   {editingAppointmentId ? 'Salvar Alterações' : 'Finalizar Agendamento'}
                 </button>
@@ -731,7 +743,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
         <div className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           
           <div className="flex items-center space-x-4">
-            <div className="bg-[#e4f3d2] text-[#192F28] rounded-xl px-4 py-2 flex flex-col items-center justify-center min-w-[64px]">
+            <div className="bg-[#e4f3d2] text-brand-primary rounded-xl px-4 py-2 flex flex-col items-center justify-center min-w-[64px]">
                <span className="text-xs font-bold uppercase">{getMonthShortName(currentDate)}</span>
                <span className="text-xl font-bold leading-tight">{currentDate.getDate()}</span>
             </div>
@@ -759,7 +771,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                   setSelectedPatientId(patients[0].id);
                 }
               }}
-              className="hidden md:flex px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition items-center shadow-md h-10 cursor-pointer"
+              className="hidden md:flex px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-brand-primary hover:bg-slate-800 text-status-success transition items-center shadow-md h-10 cursor-pointer"
             >
               <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Novo Agendamento
             </button>
@@ -772,7 +784,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
           <div className="flex space-x-6 overflow-x-auto no-scrollbar">
             <button 
               onClick={() => setCalendarFilter('all')}
-              className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === 'all' ? 'border-[#8ebf5c] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === 'all' ? 'border-[#8ebf5c] text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               Todos os médicos
             </button>
@@ -780,7 +792,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               <button 
                 key={doc.id}
                 onClick={() => setCalendarFilter(doc.id)}
-                className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === doc.id ? 'border-[#8ebf5c] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                className={`font-semibold text-sm pb-3 whitespace-nowrap border-b-2 transition-colors ${calendarFilter === doc.id ? 'border-[#8ebf5c] text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               >
                 Dr(a). {doc.name.split(' ')[0]}
               </button>
@@ -811,7 +823,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
             <>
               <div className="grid grid-cols-7 bg-[#e4f3d2] py-2.5 rounded-t-xl overflow-hidden border border-[#d1eca8] border-b-0">
                 {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
-                   <div key={d} className="text-center font-semibold text-sm text-[#192F28]">{d}</div>
+                   <div key={d} className="text-center font-semibold text-sm text-brand-primary">{d}</div>
                 ))}
               </div>
               
@@ -864,8 +876,8 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                    <div className="w-16 sm:w-20 shrink-0 border-r border-[#d1eca8]"></div>
                    {weekDays.map(day => (
                      <div key={day.name} className="flex-1 py-3 text-center border-r border-[#d1eca8] last:border-0">
-                        <span className="block text-xs sm:text-sm text-[#192F28]/80 mb-1 font-semibold">{day.name}</span>
-                        <span className={`inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-sm font-semibold rounded-full ${day.active ? 'bg-slate-900 text-white shadow-sm' : 'text-[#192F28]'}`}>
+                        <span className="block text-xs sm:text-sm text-brand-primary/80 mb-1 font-semibold">{day.name}</span>
+                        <span className={`inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-sm font-semibold rounded-full ${day.active ? 'bg-slate-900 text-white shadow-sm' : 'text-brand-primary'}`}>
                           {day.label}
                         </span>
                      </div>
@@ -933,7 +945,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
              <select 
                value={configDoctorId} 
                onChange={(e) => setConfigDoctorId(e.target.value)}
-               className="w-full sm:w-80 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4]"
+               className="w-full sm:w-80 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success"
              >
                {doctors.map(doc => (
                  <option key={doc.id} value={doc.id}>{doc.name} - {doc.specialty}</option>
@@ -948,7 +960,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                   <div className="flex items-center space-x-3 w-40">
                     <input 
                       type="checkbox" 
-                      className="w-4 h-4 text-[#192F28]/70 border-slate-300 rounded focus:ring-[#C1E2A4] cursor-pointer" 
+                      className="w-4 h-4 text-brand-primary/70 border-slate-300 rounded focus:ring-status-success cursor-pointer" 
                       checked={item.active} 
                       onChange={(e) => {
                         const newConfig = [...scheduleConfig];
@@ -966,7 +978,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                             const newConfig = [...scheduleConfig];
                             newConfig[idx].start = e.target.value;
                             setScheduleConfig(newConfig);
-                         }} className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#C1E2A4]" />
+                         }} className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-status-success" />
                       </div>
                       <span className="text-slate-400 mt-5">-</span>
                       <div>
@@ -975,7 +987,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
                             const newConfig = [...scheduleConfig];
                             newConfig[idx].end = e.target.value;
                             setScheduleConfig(newConfig);
-                         }} className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#C1E2A4]" />
+                         }} className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-status-success" />
                       </div>
                     </div>
                   ) : (
@@ -1002,7 +1014,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
 
       {/* API Notice */}
       <div className="bg-white border border-slate-200 p-5 rounded-2xl text-xs font-mono text-slate-500 space-y-1.5 max-w-4xl shadow-sm">
-        <strong className="text-[#192F28] block">Criptografia Local & LGPD Compliance:</strong>
+        <strong className="text-brand-primary block">Criptografia Local & LGPD Compliance:</strong>
         Todas as consultas mostradas e inseridas estão restritas ao isolamento por token de identificação do médico. Os alertas e confirmações são despachados de ponta-a-ponta usando criptografia pós-sessão do WhatsApp Webhook.
       </div>
 

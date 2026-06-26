@@ -156,7 +156,7 @@ export function AgencyClientProfile({ clinic, onBack, onUpdateStatus }: Props) {
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Plano Atual</p>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg">
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
                     {clinic.plan_type?.toUpperCase() || 'FREE'}
                   </span>
                   <button 
@@ -170,8 +170,8 @@ export function AgencyClientProfile({ clinic, onBack, onUpdateStatus }: Props) {
                 {isChangingPlan && (
                   <div className="mt-3 p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-100 text-sm">
                     <button onClick={() => handleChangePlan('free')} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all font-medium text-slate-600">Free</button>
-                    <button onClick={() => handleChangePlan('pro')} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all font-medium text-indigo-600">Pro</button>
-                    <button onClick={() => handleChangePlan('premium')} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all font-medium text-purple-600">Premium</button>
+                    <button onClick={() => handleChangePlan('pro')} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all font-medium text-brand-primary">Pro</button>
+                    <button onClick={() => handleChangePlan('premium')} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all font-medium text-brand-primary">Premium</button>
                   </div>
                 )}
               </div>
@@ -180,7 +180,7 @@ export function AgencyClientProfile({ clinic, onBack, onUpdateStatus }: Props) {
             <div className="border-t border-slate-100 mt-6 pt-6 space-y-3">
               <button 
                 onClick={() => onUpdateStatus(clinic)}
-                className={`w-full py-2.5 px-4 rounded-xl text-sm font-semibold transition-all border ${clinic.is_verified ? 'border-orange-200 text-orange-700 hover:bg-orange-50' : 'bg-[#192F28] text-white hover:bg-black'}`}
+                className={`w-full py-2.5 px-4 rounded-xl text-sm font-semibold transition-all border ${clinic.is_verified ? 'border-orange-200 text-orange-700 hover:bg-orange-50' : 'bg-brand-primary text-white hover:bg-black'}`}
               >
                 {clinic.is_verified ? 'Suspender Acesso' : 'Reativar Acesso'}
               </button>
@@ -204,7 +204,7 @@ export function AgencyClientProfile({ clinic, onBack, onUpdateStatus }: Props) {
             </div>
           </div>
           
-          <button className="w-full bg-blue-50 text-blue-700 py-3 rounded-xl border border-blue-100 font-bold text-sm flex items-center justify-center hover:bg-blue-100 transition-colors">
+          <button className="w-full bg-emerald-50 text-emerald-700 py-3 rounded-xl border border-emerald-100 font-bold text-sm flex items-center justify-center hover:bg-emerald-100 transition-colors">
             <MessageSquare className="w-4 h-4 mr-2" />
             Enviar Mensagem (WhatsApp)
           </button>
@@ -230,18 +230,18 @@ export function AgencyClientProfile({ clinic, onBack, onUpdateStatus }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
+              <div className="w-10 h-10 bg-emerald-50 text-brand-primary rounded-xl flex items-center justify-center mb-4">
                 <Users className="w-5 h-5" />
               </div>
               <h3 className="text-slate-500 text-sm font-medium">Pacientes Cadastrados</h3>
               <div className="mt-2 flex items-baseline">
                 <p className="text-[32px] font-bold text-slate-900 leading-none">{patients.length}</p>
-                <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">{activePatientsCount} ativos</span>
+                <span className="ml-2 text-xs font-bold text-brand-primary bg-emerald-50 px-2 py-1 rounded-md">{activePatientsCount} ativos</span>
               </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+              <div className="w-10 h-10 bg-emerald-50 text-brand-primary rounded-xl flex items-center justify-center mb-4">
                 <Calendar className="w-5 h-5" />
               </div>
               <h3 className="text-slate-500 text-sm font-medium">Sessões (Últimos 7 dias)</h3>

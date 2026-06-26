@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, Phone as PhoneIcon, ArrowRight, CornerDownRight, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { Doctor, dataManager } from '../data';
+import { Doctor, Patient, dataManager } from '../data';
 import { auth } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
 import { maskPhone } from '../utils/masks';
 
 interface AuthProps {
   onAuthSuccess: (doctor: Doctor) => void;
+  onPatientAuthSuccess?: (patient: Patient) => void;
 }
 
-export default function Auth({ onAuthSuccess }: AuthProps) {
+export default function Auth({ onAuthSuccess, onPatientAuthSuccess }: AuthProps) {
   type AuthTab = 'login' | 'register' | 'forgot_password' | 'verify_reset_code' | 'reset_password';
   const [activeTab, setActiveTab] = useState<AuthTab>('login');
   const [showVerification, setShowVerification] = useState(false);
@@ -114,6 +115,65 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
     setErrorMsg('');
 
     try {
+      // Patient CPF Login Bypass
+      const rawInput = loginEmail.replace(/\D/g, '');
+      if (rawInput.length === 11) {
+        
+        let patient = undefined;
+        // Try local first
+        try {
+          const patients = dataManager.getPatients();
+          patient = patients.find(p => {
+            if (!p.cpf) return false;
+            return p.cpf.replace(/\D/g, '') === rawInput;
+          });
+        } catch (e) {
+          console.error(e);
+        }
+        
+        // If not found locally, query firestore
+        if (!patient) {
+          try {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const { db } = await import('../firebase');
+            
+            // Re-apply mask to match how it's stored
+            let maskedCpf = rawInput;
+            maskedCpf = maskedCpf.replace(/(\d{3})(\d)/, '$1.$2');
+            maskedCpf = maskedCpf.replace(/(\d{3})(\d)/, '$1.$2');
+            maskedCpf = maskedCpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            
+            const q = query(
+              collection(db, 'patients'), 
+              where('cpf', 'in', [rawInput, maskedCpf])
+            );
+            
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              patient = snapshot.docs[0].data() as Patient;
+            }
+          } catch (err) {
+            console.error("Failed to fetch patient from firestore", err);
+          }
+        }
+
+        if (patient) {
+          if (loginPassword === rawInput || loginPassword === patient.cpf) {
+            setLoading(false);
+            if (onPatientAuthSuccess) onPatientAuthSuccess(patient);
+            return;
+          } else {
+            setLoading(false);
+            setErrorMsg('Senha incorreta para este CPF.');
+            return;
+          }
+        } else {
+          // If 11 digits were typed but no patient found, it might still be a regular email login fail
+          // or we can just fall through and let Firebase auth handle it and fail as "invalid email".
+          // We will fall through to let standard Auth give the error.
+        }
+      }
+
       // Hardcoded Agency Bypass
       const normalizedEmail = loginEmail.trim().toLowerCase();
       if (normalizedEmail === 'ewertonphillipe18@gmail.com' && (loginPassword === 'celanmindadmin' || loginPassword === 'cleanmindadmin')) {
@@ -434,7 +494,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           <div className="max-w-sm w-full mx-auto my-auto">
             {showVerification ? (
               <div className="flex flex-col items-center text-center animate-fade-in">
-                <div className="w-16 h-16 bg-[#C1E2A4]/20 text-[#192F28] rounded-full flex items-center justify-center mb-6">
+                <div className="w-16 h-16 bg-status-success/20 text-brand-primary rounded-full flex items-center justify-center mb-6">
                   {isVerifyingCode ? (
                     <Loader2 className="w-8 h-8 animate-spin" />
                   ) : (
@@ -461,7 +521,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                     setShowVerification(false);
                     setActiveTab('login');
                   }}
-                  className="w-full h-12 border border-[#C1E2A4]/50 text-[#192F28] hover:bg-[#C1E2A4]/20 font-medium rounded-xl transition-all flex items-center justify-center mb-4"
+                  className="w-full h-12 border border-status-success/50 text-brand-primary hover:bg-status-success/20 font-medium rounded-xl transition-all flex items-center justify-center mb-4"
                 >
                   Voltar para o Login
                 </button>
@@ -479,14 +539,14 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
                 <form onSubmit={handleLoginSubmit} className="space-y-5">
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-slate-700">Email ou CPF <span className="text-red-500">*</span></label>
                     <input
-                      type="email"
+                      type="text"
                       required
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="Digite seu e-mail"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      placeholder="seu@email.com ou 000.000.000-00"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                     />
                   </div>
 
@@ -499,7 +559,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder="Digite sua senha"
-                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                       />
                       <button 
                         type="button" 
@@ -594,7 +654,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                       value={regName}
                       onChange={(e) => setRegName(e.target.value)}
                       placeholder="Seu nome"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                     />
                   </div>
 
@@ -606,7 +666,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                       placeholder="Seu e-mail"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                     />
                   </div>
 
@@ -619,7 +679,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                         placeholder="Crie uma senha forte"
-                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                       />
                       <button 
                         type="button" 
@@ -710,7 +770,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="Digite seu e-mail"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                     />
                   </div>
 
@@ -764,7 +824,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         maxLength={1}
                         value={digit}
                         onChange={(e) => handleResetCodeChange(index, e.target.value)}
-                        className="w-10 h-10 sm:w-12 sm:h-12 text-center text-xl font-semibold bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-2 focus:ring-[#C1E2A4] transition-all"
+                        className="w-10 h-10 sm:w-12 sm:h-12 text-center text-xl font-semibold bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-status-success transition-all"
                       />
                     ))}
                   </div>
@@ -815,7 +875,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Mínimo 6 caracteres"
-                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                       />
                       <button 
                         type="button" 
@@ -836,7 +896,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                         value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
                         placeholder="Repita a nova senha"
-                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
+                        className="w-full pl-4 pr-11 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-sm text-slate-900 placeholder:text-slate-400 font-medium"
                       />
                       <button 
                         type="button" 

@@ -37,13 +37,21 @@ import AlertCenter from './components/AlertCenter';
 import Doctors from './components/Doctors';
 import Settings from './components/Settings';
 import AgencyDashboard from './components/AgencyDashboard';
+import DiaryDashboard from './components/DiaryDashboard';
+import PatientMobileApp from './components/PatientMobileApp';
 import { AgencyFinanceDashboard } from './components/AgencyFinanceDashboard';
 
 export default function App() {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [patientUser, setPatientUser] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedPatientParam, setSelectedPatientParam] = useState<string | undefined>(undefined);
   const [billingDraftParam, setBillingDraftParam] = useState<any>(null);
+
+  useEffect(() => {
+    // Sempre rolar para o topo ao trocar de aba
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
 
   useEffect(() => {
     if (doctor?.id) {
@@ -62,8 +70,31 @@ export default function App() {
   
   const diaryEntries = useStore((state) => state.diary);
 
-  // Load doctor session from local storage on mount
+  // Load doctor or patient session from local storage on mount
   useEffect(() => {
+    const patientSessionId = localStorage.getItem('cm_patient_session');
+    if (patientSessionId) {
+      const patients = dataManager.getPatients();
+      const p = patients.find(pat => pat.id === patientSessionId);
+      if (p) {
+        setPatientUser(p);
+      } else {
+        // Fallback to firestore if not found in local array
+        import('firebase/firestore').then(({ doc, getDoc }) => {
+          import('./firebase').then(({ db }) => {
+            getDoc(doc(db, 'patients', patientSessionId)).then(docSnap => {
+              if (docSnap.exists()) {
+                setPatientUser(docSnap.data());
+              } else {
+                localStorage.removeItem('cm_patient_session');
+              }
+            });
+          });
+        });
+      }
+      return;
+    }
+
     const sessionId = localStorage.getItem('cm_doctor_session');
     if (sessionId) {
       const doctors = dataManager.getDoctors();
@@ -160,7 +191,9 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('cm_doctor_session');
+    localStorage.removeItem('cm_patient_session');
     setDoctor(null);
+    setPatientUser(null);
     setActiveTab('dashboard');
   };
 
@@ -170,14 +203,28 @@ export default function App() {
     }
   };
 
-  if (!doctor) {
-    return <Auth onAuthSuccess={(doc) => {
-      localStorage.setItem('cm_doctor_session', doc.id);
-      setDoctor(doc);
-    }} />;
+  if (!doctor && !patientUser) {
+    return <Auth 
+      onAuthSuccess={(doc) => {
+        localStorage.setItem('cm_doctor_session', doc.id);
+        setDoctor(doc);
+      }} 
+      onPatientAuthSuccess={(patient) => {
+        localStorage.setItem('cm_patient_session', patient.id);
+        setPatientUser(patient);
+      }}
+    />;
   }
 
-  if (doctor.role === 'agency') {
+  if (patientUser) {
+    return (
+      <div className="bg-[#EAECE6] min-h-screen">
+         <PatientMobileApp patient={patientUser} onLogout={handleLogout} />
+      </div>
+    );
+  }
+
+  if (doctor?.role === 'agency') {
     return (
       <div className="min-h-screen bg-[#FBFBFA] font-sans text-slate-900 flex">
         {/* Mobile Backdrop Overlay */}
@@ -605,6 +652,9 @@ export default function App() {
               initialDraft={billingDraftParam}
               onClearDraft={() => setBillingDraftParam(null)}
             />
+          )}
+          {activeTab === 'diario' && (
+            <DiaryDashboard />
           )}
           {activeTab === 'paciente' && (
             <PatientDiaryApp 

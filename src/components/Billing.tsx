@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DollarSign, Clock, Plus, Receipt, Landmark, Sparkles, Check, CheckCircle2, ChevronRight, BarChart3, Search, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Billing as BillingType, Patient, dataManager } from '../data';
@@ -13,11 +13,8 @@ interface BillingProps {
 }
 
 export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
-  const patientsStore = useStore(state => state.patients);
-  const billingStore = useStore(state => state.billing);
-  
-  const patients = patientsStore;
-  const billingList = billingStore;
+  const patientsStore = useStore(state => state.patients); const patients = useMemo(() => patientsStore.filter(Boolean), [patientsStore]);
+  const billingStore = useStore(state => state.billing); const billingList = useMemo(() => billingStore.filter(b => b && b.due_date), [billingStore]);
   
   // New billing form states
   const [showForm, setShowForm] = useState(false);
@@ -151,7 +148,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -174,7 +171,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                   setSelectedPatientId(patients[0].id);
                 }
               }}
-              className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
+              className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-brand-primary hover:bg-slate-800 text-status-success transition flex items-center shadow-md h-10 cursor-pointer"
             >
               <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Gerar Nova Fatura
             </button>
@@ -185,20 +182,20 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
       <div className="flex space-x-2 border-b border-slate-200 mb-8">
         <button
           onClick={() => setActiveTab('receitas')}
-          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === 'receitas' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === 'receitas' ? 'text-brand-primary' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Receitas
           {activeTab === 'receitas' && (
-            <motion.div layoutId="finance-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
+            <motion.div layoutId="finance-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-primary rounded-t" />
           )}
         </button>
         <button
           onClick={() => setActiveTab('despesas')}
-          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === 'despesas' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${activeTab === 'despesas' ? 'text-brand-primary' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Despesas
           {activeTab === 'despesas' && (
-            <motion.div layoutId="finance-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t" />
+            <motion.div layoutId="finance-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-primary rounded-t" />
           )}
         </button>
       </div>
@@ -212,17 +209,17 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
-              <Landmark className="h-4 w-4 text-[#192F28]" />
+              <Landmark className="h-4 w-4 text-brand-primary" />
               <span>Receita Recebida</span>
             </span>
-            <span className="text-3xl font-serif text-[#192F28] font-bold block pt-2">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-3xl font-serif text-brand-primary font-bold block pt-2">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
               <Clock className="h-4 w-4 text-amber-500" />
               <span>Saldo Pendente</span>
             </span>
-            <span className="text-3xl font-serif text-[#192F28] font-bold block pt-2">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-3xl font-serif text-brand-primary font-bold block pt-2">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
 
@@ -230,11 +227,11 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-2 text-slate-800 font-bold">
-              <BarChart3 className="h-5 w-5 text-indigo-500" />
+              <BarChart3 className="h-5 w-5 text-status-success" />
               <span>Fluxo de Caixa (Últimos Meses)</span>
             </div>
             <div className="flex items-center space-x-4 text-xs font-semibold text-slate-500">
-              <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-[#192F28] mr-1.5"></div> Recebido</div>
+              <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-brand-primary mr-1.5"></div> Recebido</div>
               <div className="flex items-center"><div className="w-3 h-3 rounded-full bg-amber-400 mr-1.5"></div> Pendente</div>
             </div>
           </div>
@@ -303,7 +300,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div className="flex items-center space-x-2 text-slate-900">
-                  <DollarSign className="h-5 w-5 text-[#192F28]/70" />
+                  <DollarSign className="h-5 w-5 text-brand-primary/70" />
                   <h3 className="font-bold text-lg">Registrar Nova Cobrança de Paciente</h3>
                 </div>
                 <button 
@@ -323,7 +320,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                     required
                     value={selectedPatientId}
                     onChange={(e) => setSelectedPatientId(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   >
                     {patients.length === 0 ? (
                       <option value="">Carregue pacientes primeiro...</option>
@@ -343,7 +340,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                     required
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   />
                 </div>
 
@@ -354,7 +351,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                     required
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] focus:border-[#C1E2A4] text-slate-900"
+                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-status-success focus:border-status-success text-slate-900"
                   />
                 </div>
 
@@ -367,7 +364,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                         name="method"
                         checked={method === 'pix'}
                         onChange={() => setMethod('pix')}
-                        className="accent-[#192F28] w-4 h-4"
+                        className="accent-brand-primary w-4 h-4"
                       />
                       <span>Pix QrCode Automatizado</span>
                     </label>
@@ -377,7 +374,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                         name="method"
                         checked={method === 'cartao'}
                         onChange={() => setMethod('cartao')}
-                        className="accent-[#192F28] w-4 h-4"
+                        className="accent-brand-primary w-4 h-4"
                       />
                       <span>Cartão de Crédito Online</span>
                     </label>
@@ -387,7 +384,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                         name="method"
                         checked={method === 'dinheiro'}
                         onChange={() => setMethod('dinheiro')}
-                        className="accent-[#192F28] w-4 h-4"
+                        className="accent-brand-primary w-4 h-4"
                       />
                       <span>Dinheiro (Físico)</span>
                     </label>
@@ -395,13 +392,13 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                 </div>
               </div>
 
-              <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-5 space-y-4">
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 space-y-4">
                 <label className="flex items-start space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={autoEmitNfe}
                     onChange={(e) => setAutoEmitNfe(e.target.checked)}
-                    className="mt-1 accent-[#192F28] w-4 h-4 rounded border-slate-300"
+                    className="mt-1 accent-brand-primary w-4 h-4 rounded border-slate-300"
                   />
                   <div className="-mt-0.5">
                     <span className="block text-sm font-bold text-slate-700">Emitir NFS-e automaticamente após pagamento</span>
@@ -422,7 +419,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 text-sm font-bold bg-[#C1E2A4] text-slate-900 rounded-lg hover:bg-[#b0d292] transition-colors cursor-pointer shadow-sm border border-[#b0d292] flex items-center space-x-2"
+                className="px-6 py-2.5 text-sm font-bold bg-status-success text-slate-900 rounded-lg hover:bg-[#b0d292] transition-colors cursor-pointer shadow-sm border border-[#b0d292] flex items-center space-x-2"
               >
                 <Check className="h-4 w-4" />
                 <span>Gerar Cobrança</span>
@@ -437,7 +434,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
       {/* Invoice Table History */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h3 className="font-serif text-[#192F28] font-bold text-base">Histórico de Transações e Liquidação</h3>
+          <h3 className="font-serif text-brand-primary font-bold text-base">Histórico de Transações e Liquidação</h3>
           
           {/* Filters */}
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -448,7 +445,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                 placeholder="Buscar paciente ou ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] bg-white text-slate-900"
+                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-status-success bg-white text-slate-900"
               />
             </div>
             
@@ -475,16 +472,16 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
+          <table className="w-full text-left border-separate border-spacing-0 min-w-[750px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-mono tracking-wider text-[10px] font-bold">
-                <th className="p-4">Paciente</th>
-                <th className="p-4">Valor</th>
-                <th className="p-4">Vencimento</th>
-                <th className="p-4">Status Canal</th>
-                <th className="p-4">Nota Fiscal (NFS-e)</th>
-                <th className="p-4 text-right">Ação</th>
+              <tr className="bg-slate-50/80">
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Paciente</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Valor</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Vencimento</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Status Canal</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Nota Fiscal (NFS-e)</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 text-center border-b border-slate-200">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -500,45 +497,51 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                 </tr>
               ) : (
                 filteredBillingList.map((bill) => (
-                  <tr key={bill.id} className="hover:bg-slate-50/55 transition-colors text-slate-700 font-medium">
-                    <td className="p-4">
-                      <div className="font-serif font-bold text-sm text-[#192F28]">{getPatientName(bill.patient_id)}</div>
-                      <div className="text-[10px] font-mono text-slate-400">Ref: {bill.id} {bill.payment_method ? `| Pagamento via: ${bill.payment_method}` : ''}</div>
+                  <tr key={bill.id} className="hover:bg-slate-50/60 transition-colors group">
+                    <td className="py-4 px-6">
+                      <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight group-hover:text-brand-primary/70 transition-colors">{getPatientName(bill.patient_id)}</div>
+                      <div className="text-xs text-slate-500 mt-1">Ref: {bill.id} {bill.payment_method ? `| Pagamento via: ${bill.payment_method}` : ''}</div>
                     </td>
-                    <td className="p-4 font-mono font-bold text-sm">
-                      R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <td className="py-4 px-6">
+                      <div className="font-semibold text-slate-700 text-sm whitespace-nowrap">
+                        R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
                     </td>
-                    <td className="p-4 font-mono">
-                      {new Date(bill.due_date).toLocaleDateString('pt-BR')}
+                    <td className="py-4 px-6">
+                      <div className="text-sm text-slate-600 whitespace-nowrap">
+                        {new Date(bill.due_date).toLocaleDateString('pt-BR')}
+                      </div>
                     </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full font-mono text-[9px] font-bold uppercase ${bill.status === 'paid' ? 'bg-[#C1E2A4]/20 text-[#192F28]' : 'bg-status-danger/10 text-status-danger'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${bill.status === 'paid' ? 'bg-[#192F28]' : 'bg-status-danger animate-pulse'}`}></span>
-                        <span>{bill.status === 'paid' ? 'Liquidado' : 'Pendente'}</span>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${bill.status === 'paid' ? 'bg-emerald-50 text-brand-primary' : 'bg-rose-50 text-rose-600'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${bill.status === 'paid' ? 'bg-status-success' : 'bg-rose-500 animate-pulse'}`}></span>
+                        {bill.status === 'paid' ? 'Liquidado' : 'Pendente'}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded font-mono text-[9px] font-bold ${bill.nfe_status === 'issued' ? 'bg-[#192F28]/10 text-[#192F28] border border-[#192F28]/15' : bill.nfe_status === 'processing' ? 'bg-[#ECE5D5] text-[#192F28]' : 'bg-slate-100 text-slate-500'}`}>
-                        <Receipt className="h-3 w-3" />
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap ${bill.nfe_status === 'issued' ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/15' : bill.nfe_status === 'processing' ? 'bg-brand-cream text-brand-primary' : 'bg-slate-100 text-slate-500'}`}>
+                        <Receipt className="h-3.5 w-3.5" />
                         <span>
                           {bill.nfe_status === 'issued' ? 'Nota Emitida' : bill.nfe_status === 'processing' ? 'Em Processamento' : 'Não Emitida'}
                         </span>
                       </span>
                     </td>
-                    <td className="p-4 text-right">
-                      {bill.status === 'pending' ? (
-                        <button
-                          onClick={() => handleSimulatePayment(bill.id)}
-                          className="bg-[#192F28] text-white font-mono text-[9px] uppercase px-3 py-1.5 rounded-full font-bold hover:bg-opacity-90 transition-all cursor-pointer shadow-sm"
-                        >
-                          Simular Pix (Compensar)
-                        </button>
-                      ) : (
-                        <div className="text-[10px] text-[#192F28] font-mono font-bold flex items-center justify-end space-x-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>Conciliado</span>
-                        </div>
-                      )}
+                    <td className="py-4 px-6">
+                      <div className="flex justify-center">
+                        {bill.status === 'pending' ? (
+                          <button
+                            onClick={() => handleSimulatePayment(bill.id)}
+                            className="bg-brand-primary text-white text-xs px-4 py-2 rounded-lg font-bold hover:bg-opacity-90 transition-all cursor-pointer shadow-sm whitespace-nowrap"
+                          >
+                            Simular Pix (Compensar)
+                          </button>
+                        ) : (
+                          <div className="text-xs text-brand-primary font-bold flex items-center space-x-1.5 whitespace-nowrap">
+                            <CheckCircle2 className="h-4 w-4 text-brand-primary" />
+                            <span>Conciliado</span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -170,10 +170,12 @@ export const syncGoogleCalendarEvent = async (appStatus: Partial<Appointment>, p
     if (!res.ok) {
       const errText = await res.text();
       console.error("Failed to sync to calendar:", errText);
-      if (res.status === 401 && !doctorToken) {
-        cachedAccessToken = null;
-        localStorage.removeItem('google_access_token');
-        alert("Sua conexão com o Google Calendar expirou. Por favor, autentique novamente nas configurações.");
+      if (res.status === 401) {
+        if (!doctorToken) {
+          cachedAccessToken = null;
+          localStorage.removeItem('google_access_token');
+        }
+        alert("Sua conexão com o Google Calendar expirou ou é inválida. Por favor, autentique novamente nas configurações / perfil do médico.");
       }
       return;
     }
@@ -201,9 +203,11 @@ export const deleteGoogleCalendarEvent = async (eventId: string, doctorToken?: s
       headers: { 'Authorization': `Bearer ${tokenToUse}` }
     });
     if (!res.ok) {
-      if (res.status === 401 && !doctorToken) {
-        cachedAccessToken = null;
-        localStorage.removeItem('google_access_token');
+      if (res.status === 401) {
+        if (!doctorToken) {
+          cachedAccessToken = null;
+          localStorage.removeItem('google_access_token');
+        }
       }
       if (res.status === 410) {
         console.log("Calendar event already deleted");

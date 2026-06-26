@@ -52,11 +52,11 @@ export default function AlertCenter({ onNavigate }: AlertCenterProps) {
         <div className="divide-y divide-slate-100">
           {crisisAlerts.length === 0 ? (
             <div className="p-12 text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-[#C1E2A4]/20 flex items-center justify-center mb-4 border border-[#C1E2A4]/50">
-                <CheckCircle2 className="h-8 w-8 text-[#192F28]" />
+              <div className="w-16 h-16 rounded-full bg-status-success/20 flex items-center justify-center mb-4 border border-status-success/50">
+                <CheckCircle2 className="h-8 w-8 text-brand-primary" />
               </div>
-              <p className="font-bold text-[#192F28] text-lg">Nenhum evento crítico</p>
-              <p className="text-sm text-[#192F28]/70 max-w-md mt-2">
+              <p className="font-bold text-brand-primary text-lg">Nenhum evento crítico</p>
+              <p className="text-sm text-brand-primary/70 max-w-md mt-2">
                 A IA não detectou padrões acionáveis ou menções de risco alto nos diários recentes de seus pacientes.
               </p>
             </div>
@@ -98,7 +98,7 @@ export default function AlertCenter({ onNavigate }: AlertCenterProps) {
                       target="_blank"
                       rel="noreferrer"
                       onClick={() => dataManager.addAuditLog('Iniciou Acolhimento', `Contato via WhatsApp a partir do alerta: ${alert.id}`, alert.patient_id)}
-                      className="bg-[#192F28] hover:bg-[#12221d] text-white text-sm font-semibold py-2 px-5 rounded-lg transition-colors cursor-pointer inline-flex items-center space-x-2"
+                      className="bg-brand-primary hover:bg-[#12221d] text-white text-sm font-semibold py-2 px-5 rounded-lg transition-colors cursor-pointer inline-flex items-center space-x-2"
                     >
                       <Heart className="w-4 h-4" />
                       <span>Acolhimento via WhatsApp</span>
@@ -119,7 +119,7 @@ export default function AlertCenter({ onNavigate }: AlertCenterProps) {
                         dataManager.addAuditLog('Resolveu Alerta', `Marcou alerta comportamental como resolvido: ${alert.id}`, alert.patient_id);
                         dataManager.updateDiaryEntry(alert.id, { crisis_flag: false });
                       }}
-                      className="ml-auto text-slate-400 hover:text-[#192F28]/70 text-sm font-medium transition-colors cursor-pointer flex items-center space-x-1.5"
+                      className="ml-auto text-slate-400 hover:text-brand-primary/70 text-sm font-medium transition-colors cursor-pointer flex items-center space-x-1.5"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Marcar como resolvido</span>

@@ -121,9 +121,9 @@ export default function AgencyDashboard() {
       
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-           <div className="flex items-center space-x-2 text-[#C1E2A4] mb-2">
+           <div className="flex items-center space-x-2 text-status-success mb-2">
              <ShieldCheck className="w-5 h-5" />
-             <span className="text-[13px] font-bold tracking-wider text-[#192F28] uppercase">Master Admin</span>
+             <span className="text-[13px] font-bold tracking-wider text-brand-primary uppercase">Master Admin</span>
            </div>
            <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">CleanMind Hub</h1>
            <p className="text-[15px] font-medium text-slate-500 mt-1">Visão global de todos os clientes e clínicas a utilizar o CleanMind.</p>
@@ -137,7 +137,7 @@ export default function AgencyDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-emerald-100 text-brand-primary rounded-xl flex items-center justify-center">
                   <Building2 className="w-6 h-6" />
                 </div>
               </div>
@@ -170,7 +170,7 @@ export default function AgencyDashboard() {
                 <CreditCard className="w-24 h-24" />
               </div>
               <div className="flex items-center justify-between mb-4 relative z-10">
-                <div className="w-12 h-12 bg-[#C1E2A4]/50 text-[#192F28] rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-status-success/50 text-brand-primary rounded-xl flex items-center justify-center">
                   <CreditCard className="w-6 h-6" />
                 </div>
               </div>
@@ -185,7 +185,7 @@ export default function AgencyDashboard() {
                  <h2 className="text-lg font-bold text-slate-800">Clientes Atuais</h2>
                  <button 
                    onClick={() => { setShowInviteModal(true); setGeneratedLink(""); setInviteEmail(""); setInviteName(""); }}
-                   className="flex items-center space-x-2 bg-[#192F28] hover:bg-[#25453B] text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+                   className="flex items-center space-x-2 bg-brand-primary hover:bg-[#25453B] text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
                  >
                    <Plus className="w-4 h-4" />
                    <span>Nova Clínica</span>
@@ -203,67 +203,67 @@ export default function AgencyDashboard() {
                </div>
              </div>
 
-             <div className="overflow-x-auto">
-               <table className="w-full">
-                 <thead>
-                   <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                     <th className="px-6 py-4">Clínica / Responsável</th>
-                     <th className="px-6 py-4 text-center">Pacientes</th>
-                     <th className="px-6 py-4 text-center">Status</th>
-                     <th className="px-6 py-4 text-center">Login (Acesso)</th>
-                     <th className="px-6 py-4 text-center">Plano</th>
-                     <th className="px-6 py-4 text-right">Ação Rápida</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-100">
-                   {filteredClinics.length === 0 ? (
-                     <tr>
-                       <td colSpan={5} className="py-8 text-center text-slate-500">Nenhum cliente encontrado.</td>
-                     </tr>
-                   ) : (
-                     filteredClinics.map(clinic => (
-                       <tr 
-                         key={clinic.id} 
-                         className="hover:bg-slate-50 transition-colors cursor-pointer"
-                         onClick={() => setSelectedClinic(clinic)}
-                       >
-                         <td className="px-6 py-4">
-                           <div className="font-medium text-slate-900">{clinic.clinic_name || 'Sem nome (Incompleto)'}</div>
-                           <div className="text-sm text-slate-500">{clinic.email}</div>
-                         </td>
-                         <td className="px-6 py-4 text-center font-medium text-slate-700">
-                           {clinicsStats[clinic.id]?.patients || 0}
-                         </td>
-                         <td className="px-6 py-4 text-center">
-                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${clinic.is_configured ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                             {clinic.is_configured ? 'Configurada' : 'Pendente Configuração'}
-                           </span>
-                         </td>
-                         <td className="px-6 py-4 text-center">
-                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${clinic.is_verified ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
-                              {clinic.is_verified ? 'Ativo' : 'Suspenso/Inativo'}
-                           </span>
-                         </td>
-                         <td className="px-6 py-4 text-center text-sm text-slate-600">
-                           {clinic.plan_type ? clinic.plan_type.toUpperCase() : 'FREE'}
-                         </td>
-                         <td className="px-6 py-4 text-right">
-                           <button 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               toggleStatus(clinic);
-                             }}
-                             className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                           >
-                             {clinic.is_verified ? 'Suspender' : 'Reativar'}
-                           </button>
-                         </td>
-                       </tr>
-                     ))
-                   )}
-                 </tbody>
-               </table>
-             </div>
+            <div className="overflow-x-auto custom-scroll border-t border-slate-200">
+              <table className="w-full text-left border-separate border-spacing-0 min-w-[750px]">
+                <thead>
+                  <tr className="bg-slate-50/80">
+                    <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Clínica / Responsável</th>
+                    <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200 text-center">Pacientes</th>
+                    <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200 text-center">Status</th>
+                    <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200 text-center">Login (Acesso)</th>
+                    <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200 text-center">Plano</th>
+                    <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200 text-right">Ação Rápida</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredClinics.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-500">Nenhum cliente encontrado.</td>
+                    </tr>
+                  ) : (
+                    filteredClinics.map(clinic => (
+                      <tr 
+                        key={clinic.id} 
+                        className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
+                        onClick={() => setSelectedClinic(clinic)}
+                      >
+                        <td className="py-4 px-6">
+                          <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight group-hover:text-brand-primary/70 transition-colors">{clinic.clinic_name || 'Sem nome (Incompleto)'}</div>
+                          <div className="text-xs text-slate-500 mt-1">{clinic.email}</div>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <div className="font-semibold text-slate-700 text-sm">{clinicsStats[clinic.id]?.patients || 0}</div>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${clinic.is_configured ? 'bg-status-success/20 text-brand-primary' : 'bg-brand-cream text-brand-primary'}`}>
+                            {clinic.is_configured ? 'Configurada' : 'Pendente Configuração'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${clinic.is_verified ? 'bg-brand-primary/10 text-brand-primary' : 'bg-slate-100 text-slate-500'}`}>
+                             {clinic.is_verified ? 'Ativo' : 'Suspenso/Inativo'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <div className="text-sm font-medium text-slate-600 whitespace-nowrap">{clinic.plan_type ? clinic.plan_type.toUpperCase() : 'FREE'}</div>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleStatus(clinic);
+                            }}
+                            className="text-xs font-bold text-brand-primary hover:opacity-70 transition-colors bg-slate-100 px-3 py-1.5 rounded-lg"
+                          >
+                            {clinic.is_verified ? 'Suspender' : 'Reativar'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
@@ -279,7 +279,7 @@ export default function AgencyDashboard() {
             >
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-[#C1E2A4]/20 text-[#192F28] rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-status-success/20 text-brand-primary rounded-xl flex items-center justify-center">
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
@@ -306,7 +306,7 @@ export default function AgencyDashboard() {
                         value={inviteName}
                         onChange={e => setInviteName(e.target.value)}
                         placeholder="Ex: Clínica CleanMind"
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] text-sm"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary text-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -317,14 +317,14 @@ export default function AgencyDashboard() {
                         value={inviteEmail}
                         onChange={e => setInviteEmail(e.target.value)}
                         placeholder="contato@clinica.com"
-                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-[#192F28] text-sm"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-primary text-sm"
                       />
                     </div>
                     
                     <button 
                       type="submit"
                       disabled={!inviteEmail || !inviteName}
-                      className="w-full mt-2 bg-[#192F28] hover:bg-black text-white py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                      className="w-full mt-2 bg-brand-primary hover:bg-black text-white py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
                     >
                       Gerar Link de Convite
                     </button>
@@ -339,7 +339,7 @@ export default function AgencyDashboard() {
                         </div>
                         <button 
                           onClick={() => { navigator.clipboard.writeText(generatedLink); alert("Link copiado!"); }}
-                          className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                          className="p-2 bg-brand-primary text-white rounded-lg hover:bg-emerald-700 transition-colors"
                           title="Copiar Link"
                         >
                           <Copy className="w-4 h-4" />

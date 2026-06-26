@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DollarSign, Clock, Plus, CheckCircle2, Search, Filter, X } from 'lucide-react';
 import { Expense, dataManager } from '../data';
 import { useStore } from '../store';
 
 export default function Expenses() {
-  const expensesStore = useStore(state => state.expenses);
+  const rawExpensesStore = useStore(state => state.expenses); const expenses = useMemo(() => rawExpensesStore.filter(e => e && e.date), [rawExpensesStore]);
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().substring(0, 10));
@@ -47,8 +47,8 @@ export default function Expenses() {
     }
   };
 
-  const totalPaid = expensesStore.filter(e => e.status === 'paid').reduce((acc, e) => acc + e.amount, 0);
-  const totalPending = expensesStore.filter(e => e.status === 'pending').reduce((acc, e) => acc + e.amount, 0);
+  const totalPaid = expenses.filter(e => e.status === 'paid').reduce((acc, e) => acc + e.amount, 0);
+  const totalPending = expenses.filter(e => e.status === 'pending').reduce((acc, e) => acc + e.amount, 0);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -61,7 +61,7 @@ export default function Expenses() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -71,21 +71,21 @@ export default function Expenses() {
         <div className="flex gap-4">
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-48">
             <div className="text-xs font-semibold text-slate-500 uppercase flex items-center mb-1">
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-[#192F28]" /> Pago
+              <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-brand-primary" /> Pago
             </div>
-            <div className="text-2xl font-bold text-[#192F28]">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold text-brand-primary">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-48">
             <div className="text-xs font-semibold text-slate-500 uppercase flex items-center mb-1">
               <Clock className="w-3.5 h-3.5 mr-1 text-amber-500" /> Pendente
             </div>
-            <div className="text-2xl font-bold text-[#192F28]">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold text-brand-primary">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
 
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-5 py-2 text-[14px] font-bold rounded-lg border border-transparent bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center shadow-md cursor-pointer h-10"
+          className="px-5 py-2 text-[14px] font-bold rounded-lg border border-transparent bg-brand-primary hover:bg-emerald-700 text-white transition flex items-center shadow-md cursor-pointer h-10"
         >
           <Plus className="w-4 h-4 mr-2" /> Adicionar Despesa
         </button>
@@ -109,7 +109,7 @@ export default function Expenses() {
               </button>
               
               <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-                <DollarSign className="w-5 h-5 text-indigo-500 mr-2" /> Nova Despesa
+                <DollarSign className="w-5 h-5 text-status-success mr-2" /> Nova Despesa
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -122,7 +122,7 @@ export default function Expenses() {
                     required
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-status-success/20 focus:border-status-success outline-none"
                     placeholder="Ex: 150.00"
                   />
                 </div>
@@ -133,7 +133,7 @@ export default function Expenses() {
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-status-success/20 focus:border-status-success outline-none"
                   />
                 </div>
                 <div>
@@ -141,7 +141,7 @@ export default function Expenses() {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-status-success/20 focus:border-status-success outline-none cursor-pointer"
                   >
                     <option value="água">Água</option>
                     <option value="luz">Luz</option>
@@ -157,7 +157,7 @@ export default function Expenses() {
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-status-success/20 focus:border-status-success outline-none cursor-pointer"
                   >
                     <option value="paid">Pago</option>
                     <option value="pending">Pendente (A Pagar)</option>
@@ -169,7 +169,7 @@ export default function Expenses() {
                     type="text"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-status-success/20 focus:border-status-success outline-none"
                     placeholder="Detalhes adicionais..."
                   />
                 </div>
@@ -178,7 +178,7 @@ export default function Expenses() {
               <div className="mt-6 flex justify-end">
                 <button
                   type="submit"
-                  className="bg-[#192F28] text-[#C1E2A4] font-bold px-6 py-2.5 rounded-lg hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+                  className="bg-brand-primary text-status-success font-bold px-6 py-2.5 rounded-lg hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
                 >
                   Salvar Despesa
                 </button>
@@ -195,58 +195,67 @@ export default function Expenses() {
           </h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-separate border-spacing-0 min-w-[750px]">
             <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100 text-xs text-slate-500 uppercase font-semibold">
-                <th className="p-4 font-mono tracking-wider">Descrição / Categoria</th>
-                <th className="p-4 font-mono tracking-wider">Valor</th>
-                <th className="p-4 font-mono tracking-wider">Data</th>
-                <th className="p-4 font-mono tracking-wider">Status</th>
-                <th className="p-4 font-mono tracking-wider text-right">Ação</th>
+              <tr className="bg-slate-50/80">
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Descrição / Categoria</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Valor</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Data</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Status</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 text-center border-b border-slate-200">Ação</th>
               </tr>
             </thead>
-            <tbody>
-              {expensesStore.length === 0 ? (
+            <tbody className="divide-y divide-slate-100">
+              {expenses.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-slate-500 font-medium">Nenhuma despesa registrada.</td>
                 </tr>
               ) : (
-                expensesStore.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
-                  <tr key={exp.id} className="hover:bg-slate-50/55 transition-colors border-b border-slate-50 last:border-0">
-                    <td className="p-4">
-                      <div className="font-bold text-sm text-[#192F28]">{exp.description || 'Sem descrição'}</div>
-                      <div className="text-xs text-slate-500 capitalize">{exp.category}</div>
+                [...expenses]
+                  .filter(exp => exp && exp.date)
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map(exp => (
+                  <tr key={exp.id} className="hover:bg-slate-50/60 transition-colors group">
+                    <td className="py-4 px-6">
+                      <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight group-hover:text-brand-primary/70 transition-colors">{exp.description || 'Sem descrição'}</div>
+                      <div className="text-xs text-slate-500 mt-1 capitalize">{exp.category}</div>
                     </td>
-                    <td className="p-4 font-mono font-bold text-sm text-slate-700">
-                      R$ {exp.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <td className="py-4 px-6">
+                      <div className="font-semibold text-slate-700 text-sm whitespace-nowrap">
+                        R$ {exp.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {new Date(exp.date).toLocaleDateString('pt-BR')}
+                    <td className="py-4 px-6">
+                      <div className="text-sm text-slate-600 whitespace-nowrap">
+                        {new Date(exp.date).toLocaleDateString('pt-BR')}
+                      </div>
                     </td>
-                    <td className="p-4">
+                    <td className="py-4 px-6">
                       {exp.status === 'paid' ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded font-medium text-[10px] uppercase bg-emerald-100 text-emerald-800">
-                          Pago
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-brand-primary whitespace-nowrap">
+                          <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-status-success"></span>
+                          <span>Pago</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded font-medium text-[10px] uppercase bg-amber-100 text-amber-800">
-                          Pendente
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 whitespace-nowrap">
+                          <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-amber-500 animate-pulse"></span>
+                          <span>Pendente</span>
                         </span>
                       )}
                     </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end space-x-3">
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-center space-x-3">
                         {exp.status === 'pending' && (
                           <button
                             onClick={() => handlePayExpense(exp.id)}
-                            className="text-xs text-indigo-600 font-semibold hover:text-indigo-800 cursor-pointer"
+                            className="text-xs text-brand-primary font-bold hover:text-emerald-800 cursor-pointer transition-colors"
                           >
                             Pagar
                           </button>
                         )}
                         <button
                           onClick={() => handleDeleteExpense(exp.id)}
-                          className="text-xs text-red-500 font-semibold hover:text-red-700 cursor-pointer"
+                          className="text-xs text-rose-500 font-bold hover:text-rose-700 cursor-pointer transition-colors"
                         >
                           Excluir
                         </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AlertCircle, Calendar, DollarSign, Users, ArrowRight, TrendingUp, TrendingDown, Clock, Laptop, Activity } from 'lucide-react';
 import { Appointment, Patient, Billing, DiaryEntry, dataManager } from '../data';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -11,11 +11,11 @@ interface DashboardProps {
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const isLoading = useStore(state => state.isLoading);
-  const patients = useStore(state => state.patients);
-  const appointments = useStore(state => state.appointments);
-  const billing = useStore(state => state.billing);
-  const diaryEntries = useStore(state => state.diary);
-  const expenses = useStore(state => state.expenses);
+  const patientsStore = useStore(state => state.patients); const patients = useMemo(() => patientsStore.filter(Boolean), [patientsStore]);
+  const appointmentsStore = useStore(state => state.appointments); const appointments = useMemo(() => appointmentsStore.filter(a => a && a.date), [appointmentsStore]);
+  const billingStore = useStore(state => state.billing); const billing = useMemo(() => billingStore.filter(b => b && b.due_date), [billingStore]);
+  const diaryEntriesStore = useStore(state => state.diary); const diaryEntries = useMemo(() => diaryEntriesStore.filter(Boolean), [diaryEntriesStore]);
+  const expensesStore = useStore(state => state.expenses); const expenses = useMemo(() => expensesStore.filter(e => e && e.date), [expensesStore]);
   
   // Calculations for KPIs
   // Using fixed date matching the app's current context
@@ -111,7 +111,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <div className="flex items-center space-x-4">
           <button 
             onClick={() => onNavigate('agenda', undefined, 'new_appointment')}
-            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10"
+            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-brand-primary hover:bg-slate-800 text-status-success transition flex items-center shadow-md h-10"
           >
             <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Novo Agendamento
           </button>
@@ -132,7 +132,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <Users className="w-5 h-5 text-slate-600" />
               <span className="text-[15px] font-bold text-slate-800">Total Pacientes Ativos</span>
             </div>
-            <button className="text-[13px] font-bold text-[#192F28] hover:text-slate-700 flex items-center cursor-pointer" onClick={() => onNavigate('paciente')}>
+            <button className="text-[13px] font-bold text-brand-primary hover:text-slate-700 flex items-center cursor-pointer" onClick={() => onNavigate('paciente')}>
               Ver Detalhes &gt;
             </button>
           </div>
@@ -146,23 +146,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               )}
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xs font-semibold text-slate-400 mb-1">Mês anterior <span className="text-[#192F28]/70 bg-[#C1E2A4]/20 px-1.5 py-0.5 rounded ml-1 font-bold">↗ 12.3%</span></span>
+              <span className="text-xs font-semibold text-slate-400 mb-1">Mês anterior <span className="text-brand-primary/70 bg-status-success/20 px-1.5 py-0.5 rounded ml-1 font-bold">↗ 12.3%</span></span>
             </div>
           </div>
 
           <div className="flex space-x-1 w-full h-3 mb-4">
-            <div className="bg-[#192F28] h-full rounded-l-full" style={{ width: '60%' }}></div>
-            <div className="bg-[#C1E2A4] h-full" style={{ width: '25%' }}></div>
+            <div className="bg-brand-primary h-full rounded-l-full" style={{ width: '60%' }}></div>
+            <div className="bg-status-success h-full" style={{ width: '25%' }}></div>
             <div className="bg-[#A3B1A6] h-full rounded-r-full" style={{ width: '15%' }}></div>
           </div>
 
           <div className="flex items-center justify-between text-xs font-bold text-slate-500">
             <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#192F28]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-brand-primary"></div>
               <span>Recorrentes (60%)</span>
             </div>
             <div className="flex items-center space-x-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#C1E2A4]"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-status-success"></div>
               <span>Esporádicos (25%)</span>
             </div>
             <div className="flex items-center space-x-1.5">
@@ -183,7 +183,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <Calendar className="w-5 h-5 text-slate-600" />
               <span className="text-[15px] font-bold text-slate-800">Sessões deste Mês</span>
             </div>
-            <button className="text-[13px] font-bold text-[#192F28] hover:text-slate-700 flex items-center cursor-pointer" onClick={() => onNavigate('agenda')}>
+            <button className="text-[13px] font-bold text-brand-primary hover:text-slate-700 flex items-center cursor-pointer" onClick={() => onNavigate('agenda')}>
               Ver Detalhes &gt;
             </button>
           </div>
@@ -191,7 +191,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="flex flex-row items-center justify-between h-full">
             <div className="relative w-[150px] h-[75px] overflow-hidden flex-shrink-0">
                {/* Simple CSS gauge simulation */}
-               <div className="w-[150px] h-[150px] rounded-full border-[12px] border-slate-100 absolute top-0 left-0 border-t-[#192F28] border-l-[#192F28] border-r-[#C1E2A4] rotate-45"></div>
+               <div className="w-[150px] h-[150px] rounded-full border-[12px] border-slate-100 absolute top-0 left-0 border-t-brand-primary border-l-brand-primary border-r-status-success rotate-45"></div>
                <div className="absolute top-[35px] left-0 right-0 flex flex-col items-center">
                  <span className="text-[28px] font-extrabold text-slate-900 leading-none">{totalMonthApps}</span>
                  <span className="text-[11px] font-bold text-slate-400">Total Marcad.</span>
@@ -201,14 +201,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="flex flex-col space-y-3 font-semibold text-[13px] whitespace-nowrap ml-6 flex-grow">
               <div className="flex justify-between items-center w-full">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-[#C1E2A4]"></div>
+                  <div className="w-2 h-2 rounded-full bg-status-success"></div>
                   <span className="text-slate-600">Sessões Concluídas</span>
                 </div>
                 <span className="text-slate-900">{currentMonthApps.filter(a => a.status === 'completed').length}</span>
               </div>
               <div className="flex justify-between items-center w-full">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-[#192F28]"></div>
+                  <div className="w-2 h-2 rounded-full bg-brand-primary"></div>
                   <span className="text-slate-600">Sessões Agendadas</span>
                 </div>
                 <span className="text-slate-900">{currentMonthApps.length - currentMonthApps.filter(a => a.status === 'completed' || a.status === 'canceled').length}</span>
@@ -252,8 +252,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <div className="text-slate-500 text-sm font-medium">Visão Geral do Saldo</div>
               </div>
               <div className="flex items-center space-x-4 text-xs font-semibold text-slate-500">
-                <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#C1E2A4] mr-1.5"></div> Receita</div>
-                <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#192F28] mr-1.5"></div> A receber</div>
+                <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-status-success mr-1.5"></div> Receita</div>
+                <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-brand-primary mr-1.5"></div> A receber</div>
                 <div className="flex items-center"><div className="w-2.5 h-2.5 rounded-sm bg-[#A3B1A6] mr-1.5"></div> Despesas</div>
               </div>
             </div>
@@ -336,14 +336,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {/* Right Column: Alerts First, then Breakdown */}
         <div className="space-y-6">
           {/* Central de Alertas Summary */}
-          <div className={`p-6 rounded-3xl border shadow-sm ${crisisAlerts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-[#C1E2A4]/20 border-[#C1E2A4]/50'}`}>
+          <div className={`p-6 rounded-3xl border shadow-sm ${crisisAlerts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-status-success/20 border-status-success/50'}`}>
              <div className="flex items-center space-x-3 mb-3">
-               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${crisisAlerts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-[#C1E2A4] text-[#192F28]'}`}>
+               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${crisisAlerts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-status-success text-brand-primary'}`}>
                  <AlertCircle className="w-5 h-5" />
                </div>
                <div>
-                  <h3 className={`font-bold ${crisisAlerts.length > 0 ? 'text-red-900' : 'text-[#192F28]'}`}>Alertas Clínicos</h3>
-                  <p className={`text-sm ${crisisAlerts.length > 0 ? 'text-red-700' : 'text-[#192F28]/80'}`}>
+                  <h3 className={`font-bold ${crisisAlerts.length > 0 ? 'text-red-900' : 'text-brand-primary'}`}>Alertas Clínicos</h3>
+                  <p className={`text-sm ${crisisAlerts.length > 0 ? 'text-red-700' : 'text-brand-primary/80'}`}>
                     {crisisAlerts.length} casos de atenção
                   </p>
                </div>
@@ -357,7 +357,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                  <ArrowRight className="w-4 h-4" />
                </button>
              ) : (
-                <div className="text-xs text-[#192F28] mt-2 font-medium">Todos os pacientes estão estáveis.</div>
+                <div className="text-xs text-brand-primary mt-2 font-medium">Todos os pacientes estão estáveis.</div>
              )}
           </div>
 
@@ -371,7 +371,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <div className="flex items-center">
-                    <Laptop className="w-4 h-4 text-[#C1E2A4] mr-2" />
+                    <Laptop className="w-4 h-4 text-status-success mr-2" />
                     <span className="text-sm font-semibold text-slate-700">Online</span>
                   </div>
                   <div className="text-right">
@@ -380,7 +380,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-[#C1E2A4] h-2 rounded-full" style={{ width: `${onlinePercentage}%` }}></div>
+                  <div className="bg-status-success h-2 rounded-full" style={{ width: `${onlinePercentage}%` }}></div>
                 </div>
               </div>
 
@@ -388,7 +388,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <div>
                 <div className="flex justify-between items-end mb-2">
                   <div className="flex items-center">
-                    <Users className="w-4 h-4 text-[#192F28] mr-2" />
+                    <Users className="w-4 h-4 text-brand-primary mr-2" />
                     <span className="text-sm font-semibold text-slate-700">Presencial</span>
                   </div>
                   <div className="text-right">
@@ -397,7 +397,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div className="bg-[#C1E2A4] h-2 rounded-full" style={{ width: `${presencialPercentage}%` }}></div>
+                  <div className="bg-status-success h-2 rounded-full" style={{ width: `${presencialPercentage}%` }}></div>
                 </div>
               </div>
             </div>
@@ -419,48 +419,48 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             Acessar Agenda Completa
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
-              <tr>
-                <th className="px-6 py-4 rounded-tl-xl">Sessão ID</th>
-                <th className="px-6 py-4">Paciente</th>
-                <th className="px-6 py-4">Data / Hora</th>
-                <th className="px-6 py-4">Modalidade</th>
-                <th className="px-6 py-4">Status</th>
+        <div className="overflow-x-auto custom-scroll border-t border-slate-200">
+          <table className="w-full text-left border-separate border-spacing-0 min-w-[750px]">
+            <thead>
+              <tr className="bg-slate-50/80">
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Sessão ID</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Paciente</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Data / Hora</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Modalidade</th>
+                <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {appointments.slice(0, 5).map(app => (
-                <tr key={app.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs text-slate-400">#{app.id.substring(0, 6)}</td>
-                  <td className="px-6 py-4">
+                <tr key={app.id} className="hover:bg-slate-50/60 transition-colors group">
+                  <td className="py-4 px-6 font-mono text-xs text-slate-400">#{app.id.substring(0, 6)}</td>
+                  <td className="py-4 px-6">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-xs">
+                      <div className="w-8 h-8 rounded-full bg-status-success/30 flex items-center justify-center font-bold text-brand-primary text-xs">
                         {getPatientName(app.patient_id).charAt(0)}
                       </div>
-                      <span className="font-medium text-slate-900">{getPatientName(app.patient_id)}</span>
+                      <span className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight group-hover:text-brand-primary/70 transition-colors">{getPatientName(app.patient_id)}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center text-slate-700">
+                  <td className="py-4 px-6">
+                    <div className="flex items-center text-slate-600 text-sm whitespace-nowrap">
                       <Calendar className="w-3.5 h-3.5 mr-2 text-slate-400" />
                       {app.date.split('-').reverse().join('/')}
                       <Clock className="w-3.5 h-3.5 ml-3 mr-1.5 text-slate-400" />
                       {app.start_time}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded bg-slate-100 text-slate-700">
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${app.type === 'online' ? 'bg-[#C1E2A4]' : 'bg-orange-500'}`}></span>
+                  <td className="py-4 px-6">
+                    <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap">
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${app.type === 'online' ? 'bg-brand-primary' : 'bg-orange-500'}`}></span>
                       {app.type === 'online' ? 'Online' : 'Presencial'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                     <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md ${
-                        app.status === 'completed' ? 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/30' :
-                        app.status === 'confirmed' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                        'bg-slate-50 text-slate-700 border border-slate-200'
+                  <td className="py-4 px-6">
+                     <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                        app.status === 'completed' ? 'bg-status-success/20 text-brand-primary' :
+                        app.status === 'confirmed' ? 'bg-status-success/40 text-brand-primary' :
+                        'bg-slate-100 text-slate-600'
                       }`}>
                         {app.status === 'completed' ? 'Concluída' : app.status === 'confirmed' ? 'Confirmada' : app.status}
                       </span>
@@ -469,7 +469,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               ))}
               {appointments.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">Nenhuma sessão recente encontrada.</td>
+                  <td colSpan={5} className="py-8 text-center text-slate-500">Nenhuma sessão recente encontrada.</td>
                 </tr>
               )}
             </tbody>

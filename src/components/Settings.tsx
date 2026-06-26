@@ -235,7 +235,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
       </div>
 
       {doc?.is_configured === false && (
-        <div className="bg-[#192F28] border border-[#192F28] rounded-2xl p-6 text-white shadow-sm">
+        <div className="bg-brand-primary border border-brand-primary rounded-2xl p-6 text-white shadow-sm">
           <h2 className="text-xl font-bold mb-2">Bem-vindo(a) ao Cleanmind!</h2>
           <p className="text-sm text-white/80">
             Para liberar o acesso completo a todas as funcionalidades do sistema (Dashboard, Agenda, Financeiro e Prontuários), por favor preencha as informações básicas da sua clínica abaixo. 
@@ -251,7 +251,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
             onClick={() => setActiveSubTab('profile')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
               activeSubTab === 'profile' 
-                ? 'border-[#192F28] text-[#192F28]' 
+                ? 'border-brand-primary text-brand-primary' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -262,7 +262,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
             onClick={() => setActiveSubTab('integrations')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
               activeSubTab === 'integrations' 
-                ? 'border-[#192F28] text-[#192F28]' 
+                ? 'border-brand-primary text-brand-primary' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -273,7 +273,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
             onClick={() => setActiveSubTab('whatsapp')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 cursor-pointer flex items-center space-x-2 ${
               activeSubTab === 'whatsapp' 
-                ? 'border-[#192F28] text-[#192F28]' 
+                ? 'border-brand-primary text-brand-primary' 
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -292,7 +292,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
           <div className="space-y-6">
              {/* Box 1: Cabeçalho da Clínica */}
              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-start gap-4">
-                <div className="w-20 h-20 bg-[#C1E2A4] rounded-2xl flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-20 h-20 bg-status-success rounded-2xl flex items-center justify-center shrink-0 overflow-hidden">
                   {profileData.logo ? (
                     <img src={profileData.logo} alt="Logo da Clínica" className="w-full h-full object-cover" />
                   ) : (
@@ -303,17 +303,17 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                   <div className="flex justify-between items-start">
                     <div>
                       {isEditing ? (
-                        <input type="text" name="name" value={profileData.name} onChange={handleChange} placeholder="Nome da Clínica" className={`text-2xl font-bold text-slate-900 border rounded px-2 py-1 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] ${validationErrors.includes('name') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
+                        <input type="text" name="name" value={profileData.name} onChange={handleChange} placeholder="Nome da Clínica" className={`text-2xl font-bold text-slate-900 border rounded px-2 py-1 w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-status-success ${validationErrors.includes('name') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                       ) : (
                         <h2 className="text-2xl font-bold text-slate-900">{profileData.name || 'Nome da Clínica'}</h2>
                       )}
                       
                       <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <span className="inline-flex items-center space-x-1 bg-[#C1E2A4]/20 text-[#192F28] px-3 py-1 rounded-full text-xs font-semibold border border-[#C1E2A4]/50">
+                        <span className="inline-flex items-center space-x-1 bg-status-success/20 text-brand-primary px-3 py-1 rounded-full text-xs font-semibold border border-status-success/50">
                           <Building className="w-3 h-3" />
                           <span>{profileData.specialty}</span>
                         </span>
-                        <span className="inline-flex items-center space-x-1 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold border border-blue-100">
+                        <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-semibold border border-emerald-100">
                           <MessageSquare className="w-3 h-3" />
                           <span>{profileData.patients} Pacientes</span>
                         </span>
@@ -334,7 +334,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                     )}
                   </div>
                   {isEditing ? (
-                    <textarea name="description" value={profileData.description} onChange={handleChange} rows={3} placeholder="Descreva sua clínica..." className={`text-sm text-slate-700 mt-4 leading-relaxed w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] ${validationErrors.includes('description') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
+                    <textarea name="description" value={profileData.description} onChange={handleChange} rows={3} placeholder="Descreva sua clínica..." className={`text-sm text-slate-700 mt-4 leading-relaxed w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-status-success ${validationErrors.includes('description') ? 'border-red-500 bg-red-50 placeholder-red-300' : 'border-slate-300'}`} />
                   ) : (
                     <p className="text-sm text-slate-600 mt-4 leading-relaxed max-w-3xl">
                       {profileData.description || 'Nenhuma descrição adicionada.'}
@@ -349,9 +349,9 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                 <p className="text-sm text-slate-500 mb-6">Esta logo será exibida no cabeçalho dos prontuários e documentos impressos.</p>
                 
                 {isEditing ? (
-                  <label className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-[#192F28] transition-colors cursor-pointer group">
-                    <div className="w-12 h-12 bg-[#192F28]/5 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <UploadCloud className="w-6 h-6 text-[#192F28]" />
+                  <label className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-brand-primary transition-colors cursor-pointer group">
+                    <div className="w-12 h-12 bg-brand-primary/5 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="w-6 h-6 text-brand-primary" />
                     </div>
                     <span className="text-sm font-semibold text-slate-900">Clique para enviar uma logo</span>
                     <span className="text-xs text-slate-500 mt-1">PNG, JPG ou SVG (Máx. 2MB)</span>
@@ -590,14 +590,14 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
               </div>
               <div>
                  {googleConnected ? (
-                    <span className="text-[#192F28] font-semibold px-4 py-2 border border-[#C1E2A4]/50 bg-[#C1E2A4]/20 rounded-lg flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-[#192F28] block"></span>
+                    <span className="text-brand-primary font-semibold px-4 py-2 border border-status-success/50 bg-status-success/20 rounded-lg flex items-center space-x-2">
+                      <span className="w-2 h-2 rounded-full bg-brand-primary block"></span>
                       <span>Conectado</span>
                     </span>
                  ) : (
                     <button 
                       onClick={handleConnectGoogle}
-                      className="px-5 py-2.5 bg-[#192F28] hover:bg-[#12221d] text-white rounded-lg text-sm font-semibold transition cursor-pointer"
+                      className="px-5 py-2.5 bg-brand-primary hover:bg-[#12221d] text-white rounded-lg text-sm font-semibold transition cursor-pointer"
                     >
                       Conectar Gmail
                     </button>
@@ -607,8 +607,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-                  <Calendar className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                  <Calendar className="w-6 h-6 text-brand-primary" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Google Calendar (Exportação)</h3>
@@ -618,8 +618,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
               <div>
                 {googleConnected ? (
                     <div className="flex items-center space-x-3">
-                      <span className="text-[#192F28] font-semibold px-4 py-2 border border-[#C1E2A4]/50 bg-[#C1E2A4]/20 rounded-lg flex items-center space-x-2">
-                        <span className="w-2 h-2 rounded-full bg-[#192F28] block"></span>
+                      <span className="text-brand-primary font-semibold px-4 py-2 border border-status-success/50 bg-status-success/20 rounded-lg flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-brand-primary block"></span>
                         <span>Conectado</span>
                       </span>
                       <button 
@@ -632,7 +632,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                  ) : (
                     <button 
                       onClick={handleConnectGoogle}
-                      className="px-5 py-2.5 bg-[#192F28] hover:bg-[#12221d] text-white rounded-lg text-sm font-semibold transition cursor-pointer"
+                      className="px-5 py-2.5 bg-brand-primary hover:bg-[#12221d] text-white rounded-lg text-sm font-semibold transition cursor-pointer"
                     >
                       Conectar Calendário
                     </button>
@@ -642,8 +642,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <div className="w-12 h-12 rounded-xl bg-[#C1E2A4] flex items-center justify-center shrink-0">
-                  <MessageSquare className="w-6 h-6 text-[#192F28]" />
+                <div className="w-12 h-12 rounded-xl bg-status-success flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-6 h-6 text-brand-primary" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">API do WhatsApp</h3>
@@ -651,7 +651,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                 </div>
               </div>
               <div>
-                <button className="px-5 py-2.5 bg-[#C1E2A4] border border-[#C1E2A4] text-[#192F28] hover:bg-[#b0d292] rounded-lg text-sm font-semibold transition cursor-pointer flex items-center space-x-2">
+                <button className="px-5 py-2.5 bg-status-success border border-status-success text-brand-primary hover:bg-[#b0d292] rounded-lg text-sm font-semibold transition cursor-pointer flex items-center space-x-2">
                    <span>Configurar API</span>
                 </button>
               </div>
@@ -663,8 +663,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
           <div className="space-y-6">
              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center space-x-3 mb-6 border-b border-slate-100 pb-4">
-                   <div className="w-10 h-10 rounded-lg bg-[#C1E2A4] flex items-center justify-center">
-                     <MessageSquare className="w-5 h-5 text-[#192F28]" />
+                   <div className="w-10 h-10 rounded-lg bg-status-success flex items-center justify-center">
+                     <MessageSquare className="w-5 h-5 text-brand-primary" />
                    </div>
                    <div>
                      <h3 className="font-bold text-lg text-slate-900">Mensagens do WhatsApp</h3>
@@ -676,7 +676,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                   <label className="block text-sm font-bold text-slate-700 mb-2">Lembrete de Consulta</label>
                   <p className="text-sm text-slate-500 mb-4">Escolha a mensagem que será enviada para o paciente como lembrete 24 horas antes do agendamento.</p>
                   <textarea 
-                     className="w-full border border-slate-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] text-slate-700 resize-y"
+                     className="w-full border border-slate-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-status-success text-slate-700 resize-y"
                      rows={6}
                      defaultValue={`Olá {{nome_paciente}}, tudo bem?\n\nPassando para lembrar da nossa consulta marcada para {{data}} às {{hora}}.\n\nQualquer imprevisto, favor me avisar com antecedência.\nAté lá!`}
                   />
@@ -689,7 +689,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                 <div className="mb-6">
                   <label className="block text-sm font-bold text-slate-700 mb-2">Confirmação de Agendamento</label>
                   <textarea 
-                     className="w-full border border-slate-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#C1E2A4] text-slate-700 resize-y"
+                     className="w-full border border-slate-300 rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-status-success text-slate-700 resize-y"
                      rows={5}
                      defaultValue={`Olá {{nome_paciente}}! Sua consulta com {{nome_medico}} foi agendada com sucesso para o dia {{data}} às {{hora}}. \n\nEm breve você receberá um lembrete.`}
                   />

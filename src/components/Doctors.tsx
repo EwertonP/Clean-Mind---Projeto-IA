@@ -144,7 +144,7 @@ export default function Doctors({}: DoctorsProps) {
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -158,7 +158,7 @@ export default function Doctors({}: DoctorsProps) {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setShowDoctorForm(true)}
-            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
+            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-brand-primary hover:bg-slate-800 text-status-success transition flex items-center shadow-md h-10 cursor-pointer"
           >
             <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Novo Médico
           </button>
@@ -167,13 +167,13 @@ export default function Doctors({}: DoctorsProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {doctors.map(doc => (
-          <div key={doc.id} onClick={() => setSelectedDoctor(doc)} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-md hover:ring-2 hover:ring-[#C1E2A4] transition-all cursor-pointer">
+          <div key={doc.id} onClick={() => setSelectedDoctor(doc)} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col hover:shadow-md hover:ring-2 hover:ring-status-success transition-all cursor-pointer">
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 rounded-full bg-[#C1E2A4]/20 flex items-center justify-center shrink-0 overflow-hidden border border-[#C1E2A4]/30">
+              <div className="w-12 h-12 rounded-full bg-status-success/20 flex items-center justify-center shrink-0 overflow-hidden border border-status-success/30">
                 {doc.photo_url ? (
                   <img src={doc.photo_url} alt={doc.name} className="w-full h-full object-cover" />
                 ) : (
-                  <Stethoscope className="h-6 w-6 text-[#192F28]" />
+                  <Stethoscope className="h-6 w-6 text-brand-primary" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -235,16 +235,16 @@ export default function Doctors({}: DoctorsProps) {
              
              <div className="p-6 overflow-y-auto space-y-6 flex-1">
                 <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 rounded-full bg-[#C1E2A4]/20 flex items-center justify-center shrink-0 overflow-hidden border border-[#C1E2A4]/30 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-status-success/20 flex items-center justify-center shrink-0 overflow-hidden border border-status-success/30 shadow-sm">
                     {selectedDoctor.photo_url ? (
                       <img src={selectedDoctor.photo_url} alt={selectedDoctor.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Stethoscope className="h-8 w-8 text-[#192F28]" />
+                      <Stethoscope className="h-8 w-8 text-brand-primary" />
                     )}
                   </div>
                   <div>
                     <h4 className="text-lg font-bold text-slate-900 mb-1">{selectedDoctor.name}</h4>
-                    <p className="text-sm text-[#192F28] font-semibold bg-[#C1E2A4]/20 inline-block px-2.5 py-1 rounded-full">{selectedDoctor.specialty || 'Clínico Geral'}</p>
+                    <p className="text-sm text-brand-primary font-semibold bg-status-success/20 inline-block px-2.5 py-1 rounded-full">{selectedDoctor.specialty || 'Clínico Geral'}</p>
                   </div>
                 </div>
                 
@@ -383,7 +383,7 @@ export default function Doctors({}: DoctorsProps) {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-sm font-semibold text-[#86EFAC] bg-[#C1E2A4]/20 px-3 py-1.5 rounded-lg border border-[#C1E2A4]/30 hover:bg-[#C1E2A4]/40 transition-colors"
+                      className="text-sm font-semibold text-[#86EFAC] bg-status-success/20 px-3 py-1.5 rounded-lg border border-status-success/30 hover:bg-status-success/40 transition-colors"
                     >
                       Escolher Foto
                     </button>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { Assessment, dataManager } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,9 +7,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import Markdown from 'react-markdown';
 
 export default function PatientAssessments({ patientId }: { patientId: string }) {
-  const storeAssessments = useStore(state => state.assessments);
-  const patient = useStore(state => state.patients.find(p => p.id === patientId));
-  const medicalRecords = useStore(state => state.medicalRecords);
+  const rawAssessments = useStore(state => state.assessments);
+  const storeAssessments = React.useMemo(() => rawAssessments.filter(a => a && a.date), [rawAssessments]);
+  const patient = useStore(state => state.patients.find(p => p && p.id === patientId));
+  const medicalRecordsStoreStore = useStore(state => state.medicalRecords); const medicalRecordsStore = useMemo(() => medicalRecordsStoreStore.filter(Boolean), [medicalRecordsStoreStore]);
   
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyType, setSurveyType] = useState<'PHQ-9' | 'GAD-7' | 'BDI-II' | 'BAI'>('PHQ-9');
@@ -20,7 +21,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const assessments = storeAssessments
-    .filter(a => a.patient_id === patientId)
+    .filter(a => a && a.patient_id === patientId && a.date)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const handleRunDSMAnalysis = async () => {
@@ -222,7 +223,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
          <div className="relative z-10 md:w-2/3 mb-6 md:mb-0">
             <h2 className="text-2xl font-serif font-bold text-white mb-2 flex items-center">
-              <Brain className="w-6 h-6 mr-3 text-[#C1E2A4]" />
+              <Brain className="w-6 h-6 mr-3 text-status-success" />
               Motor de Análise Clínica (DSM-5-TR)
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed max-w-xl">
@@ -233,7 +234,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
            <button 
              onClick={handleRunDSMAnalysis} 
              disabled={isAnalyzing}
-             className="bg-[#C1E2A4] hover:bg-[#a9cd8c] disabled:opacity-70 disabled:cursor-not-allowed text-[#192F28] font-bold px-6 py-3.5 rounded-full flex items-center transition-all shadow-[0_0_20px_rgba(193,226,164,0.3)] hover:shadow-[0_0_30px_rgba(193,226,164,0.5)]"
+             className="bg-status-success hover:bg-[#a9cd8c] disabled:opacity-70 disabled:cursor-not-allowed text-brand-primary font-bold px-6 py-3.5 rounded-full flex items-center transition-all shadow-[0_0_20px_rgba(193,226,164,0.3)] hover:shadow-[0_0_30px_rgba(193,226,164,0.5)]"
            >
              {isAnalyzing ? (
                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Analisando Dados...</>
@@ -252,10 +253,10 @@ export default function PatientAssessments({ patientId }: { patientId: string })
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white border-2 border-indigo-100 rounded-2xl p-8 shadow-sm">
+            <div className="bg-white border-2 border-emerald-100 rounded-2xl p-8 shadow-sm">
                <div className="flex items-center space-x-3 mb-6 pb-6 border-b border-slate-100">
-                 <div className="bg-indigo-100 p-2.5 rounded-xl">
-                   <Brain className="w-6 h-6 text-indigo-600" />
+                 <div className="bg-emerald-100 p-2.5 rounded-xl">
+                   <Brain className="w-6 h-6 text-brand-primary" />
                  </div>
                  <div>
                    <h3 className="font-bold text-slate-800 text-lg">Parecer Analítico - DSM-5-TR</h3>
@@ -277,13 +278,13 @@ export default function PatientAssessments({ patientId }: { patientId: string })
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <motion.div whileHover={{ y: -2 }} className="bg-white border text-center border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between" onClick={() => startSurvey('PHQ-9')}>
           <div>
-            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-emerald-50 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <Activity className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-lg text-slate-800">PHQ-9</h3>
             <p className="text-slate-500 text-xs mt-2 font-medium">Questionário de Saúde do Paciente (Depressão)</p>
           </div>
-          <div className="mt-4 flex items-center justify-center space-x-2 text-indigo-600 font-semibold text-sm">
+          <div className="mt-4 flex items-center justify-center space-x-2 text-brand-primary font-semibold text-sm">
             <Plus className="w-4 h-4" />
             <span>Aplicar</span>
           </div>
@@ -291,13 +292,13 @@ export default function PatientAssessments({ patientId }: { patientId: string })
 
         <motion.div whileHover={{ y: -2 }} className="bg-white border text-center border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between" onClick={() => startSurvey('GAD-7')}>
           <div>
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-emerald-50 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <Activity className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-lg text-slate-800">GAD-7</h3>
             <p className="text-slate-500 text-xs mt-2 font-medium">Transtorno de Ansiedade Generalizada</p>
           </div>
-          <div className="mt-4 flex items-center justify-center space-x-2 text-emerald-600 font-semibold text-sm">
+          <div className="mt-4 flex items-center justify-center space-x-2 text-brand-primary font-semibold text-sm">
             <Plus className="w-4 h-4" />
             <span>Aplicar</span>
           </div>
@@ -337,10 +338,10 @@ export default function PatientAssessments({ patientId }: { patientId: string })
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
              <h3 className="text-lg font-bold text-slate-800 flex items-center">
-               <BarChart3 className="w-5 h-5 text-indigo-500 mr-2" />
+               <BarChart3 className="w-5 h-5 text-status-success mr-2" />
                Evolução PHQ-9 (Depressão)
              </h3>
-             {phq9Data.length > 0 && <span className="font-mono bg-indigo-50 text-indigo-700 px-3 py-1 rounded-md text-sm font-bold">Último: {phq9Data[phq9Data.length-1].score}</span>}
+             {phq9Data.length > 0 && <span className="font-mono bg-emerald-50 text-emerald-700 px-3 py-1 rounded-md text-sm font-bold">Último: {phq9Data[phq9Data.length-1].score}</span>}
           </div>
           
           <div className="h-[250px] w-full">
@@ -354,8 +355,8 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                 <AreaChart data={phq9Data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorPhq" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#76A34A" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#76A34A" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -366,7 +367,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                   />
                   <ReferenceLine y={9} stroke="#ef4444" strokeDasharray="3 3" opacity={0.3} />
                   <ReferenceLine y={4} stroke="#10b981" strokeDasharray="3 3" opacity={0.3} />
-                  <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorPhq)" />
+                  <Area type="monotone" dataKey="score" stroke="#76A34A" strokeWidth={3} fillOpacity={1} fill="url(#colorPhq)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -377,7 +378,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
              <h3 className="text-lg font-bold text-slate-800 flex items-center">
-               <BarChart3 className="w-5 h-5 text-emerald-500 mr-2" />
+               <BarChart3 className="w-5 h-5 text-status-success mr-2" />
                Evolução GAD-7 (Ansiedade)
              </h3>
              {gad7Data.length > 0 && <span className="font-mono bg-emerald-50 text-emerald-700 px-3 py-1 rounded-md text-sm font-bold">Último: {gad7Data[gad7Data.length-1].score}</span>}
@@ -525,7 +526,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
 
               {/* Progress Bar */}
               <div className="w-full bg-slate-100 h-1.5">
-                <div className="bg-[#192F28] h-1.5 transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
+                <div className="bg-brand-primary h-1.5 transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
               </div>
 
               <div className="p-8 flex-1 overflow-y-auto">
@@ -538,7 +539,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                     transition={{ duration: 0.2 }}
                     className="max-w-xl mx-auto"
                   >
-                    <h3 className="text-2xl font-serif font-bold text-[#192F28] mb-8 leading-snug text-center">
+                    <h3 className="text-2xl font-serif font-bold text-brand-primary mb-8 leading-snug text-center">
                       "{activeQuestions[currentQuestionIdx]}"
                     </h3>
 
@@ -547,10 +548,10 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                         <button
                           key={opt.value}
                           onClick={() => handleAnswer(opt.value)}
-                          className="w-full px-6 py-4 text-left border-2 border-slate-100 hover:border-[#C1E2A4] rounded-2xl font-medium text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-between group"
+                          className="w-full px-6 py-4 text-left border-2 border-slate-100 hover:border-status-success rounded-2xl font-medium text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-between group"
                         >
                            <span className="text-[15px]">{opt.label}</span>
-                           <div className="w-6 h-6 rounded-full border-2 border-slate-200 group-hover:border-[#C1E2A4] flex items-center justify-center transition-colors">
+                           <div className="w-6 h-6 rounded-full border-2 border-slate-200 group-hover:border-status-success flex items-center justify-center transition-colors">
                              <div className="w-2.5 h-2.5 rounded-full bg-[#76A34A] opacity-0 group-hover:opacity-100 transition-opacity"></div>
                            </div>
                         </button>

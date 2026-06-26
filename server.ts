@@ -60,6 +60,46 @@ Retorne SOMENTE texto formatado de forma limpa com quebras de linha e marcadores
     }
   });
 
+  app.post('/api/transcribe-audio', async (req, res) => {
+    try {
+      const { audioBase64, mimeType } = req.body;
+      
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY não configurada no servidor.' });
+      }
+      
+      if (!audioBase64) {
+        return res.status(400).json({ error: 'Áudio não fornecido.' });
+      }
+
+      // Remove data URL prefix if present
+      const base64Data = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: "Transcreva o áudio a seguir exatamente como foi dito, sem adicionar comentários ou formatações extras. Apenas o texto transcrito:" },
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType: mimeType || 'audio/webm'
+                }
+              }
+            ]
+          }
+        ]
+      });
+
+      res.json({ text: response.text });
+    } catch (error) {
+      console.error('Erro na transcrição de áudio com o Gemini:', error);
+      res.status(500).json({ error: 'Falha na transcrição do áudio.' });
+    }
+  });
+
   app.post('/api/send-verification', async (req, res) => {
     try {
       const { email, code, link, name } = req.body;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Brain, FileText, Lock, Sparkles, ShieldCheck, Heart, User, Send, ArrowRight, CornerDownRight, Check, AlertTriangle, CheckCircle2, Download, Hospital, Trash2, X, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Patient, DiaryEntry, MedicalRecord, dataManager } from '../data';
@@ -12,11 +12,10 @@ interface MedicalRecordEditorProps {
 }
 
 export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordEditorProps) {
-  const patientsStore = useStore(state => state.patients);
-  const medicalRecordsStore = useStore(state => state.medicalRecords);
-  const diaryStore = useStore(state => state.diary);
+  const patientsStore = useStore(state => state.patients); const patients = useMemo(() => patientsStore.filter(Boolean), [patientsStore]);
+  const medicalRecordsStoreStore = useStore(state => state.medicalRecords); const medicalRecordsStore = useMemo(() => medicalRecordsStoreStore.filter(Boolean), [medicalRecordsStoreStore]);
+  const diaryEntriesStore = useStore(state => state.diary); const diaryEntries = useMemo(() => diaryEntriesStore.filter(Boolean), [diaryEntriesStore]);
   
-  const patients = patientsStore;
   const historyRaw = medicalRecordsStore;
   const [filterPatientId, setFilterPatientId] = useState(initialPatientId || '');
   const [activeTab, setActiveTab] = useState<'records' | 'assessments'>('records');
@@ -131,11 +130,11 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
   }, [selectedFormPatientId, showForm]);
 
   // Filter diary entries for the selected patient
-  const patientDiaries = diaryStore.filter(d => d.patient_id === selectedFormPatientId);
+  const patientDiaries = diaryEntries.filter(d => d.patient_id === selectedFormPatientId);
 
   // Simulated AI CDS compiler (compliance with ANVISA RDC 657/2022)
   const generateMedicalAISummary = (patId: string) => {
-    const diaries = diaryStore.filter(d => d.patient_id === patId);
+    const diaries = diaryEntries.filter(d => d.patient_id === patId);
     if (diaries.length === 0) {
       setAiSummary('Dados insuficientes recebidos pelo diário WhatsApp. Aguardando maior amostragem do comportamento diário.');
       return;
@@ -359,7 +358,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -383,7 +382,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                 setFilterPatientId(e.target.value);
                 if (!e.target.value) setActiveTab('records');
               }}
-              className="px-4 py-2 text-[14px] bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-[#192F28] focus:ring-1 focus:ring-[#192F28] font-medium min-w-[200px] shadow-sm h-10"
+              className="px-4 py-2 text-[14px] bg-white border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary font-medium min-w-[200px] shadow-sm h-10"
             >
               <option value="">Todos os pacientes</option>
               {patients.map(p => (
@@ -397,7 +396,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               setFormStep(1);
               setShowForm(true);
             }}
-            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
+            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-brand-primary hover:bg-slate-800 text-status-success transition flex items-center shadow-md h-10 cursor-pointer"
           >
             <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Nova Evolução
           </button>
@@ -408,13 +407,13 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
         <div className="flex items-center space-x-1 border-b border-slate-200 mb-8">
           <button
             onClick={() => setActiveTab('records')}
-            className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'records' ? 'border-[#192F28] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'records' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
             Prontuários e Evoluções
           </button>
           <button
             onClick={() => setActiveTab('assessments')}
-            className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'assessments' ? 'border-[#192F28] text-[#192F28]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'assessments' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
           >
             Avaliações (Testes Psicométricos)
           </button>
@@ -444,13 +443,13 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
           >
             <div className="px-6 py-4 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
                <h3 className="font-bold text-lg text-slate-900 flex items-center space-x-2">
-                 <FileText className="h-5 w-5 text-[#192F28]/70" />
+                 <FileText className="h-5 w-5 text-brand-primary/70" />
                  <span>{formStep === 1 ? 'Selecione o Paciente' : formStep === 2 ? 'Tipo de Documento' : 'Nova Evolução e Prontuário'}</span>
                </h3>
                <div className="flex items-center space-x-4">
                  {formStep > 1 && selectedFormPatientId && (
                    <div className="flex bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 items-center space-x-2 text-sm">
-                     <User className="h-4 w-4 text-[#192F28]" />
+                     <User className="h-4 w-4 text-brand-primary" />
                      <span className="font-semibold text-slate-700">{getPatientName(selectedFormPatientId)}</span>
                    </div>
                  )}
@@ -466,7 +465,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
             <div className="p-0 overflow-y-auto w-full flex-1 bg-slate-50/50">
               {formStep === 1 && (
                   <div className="max-w-5xl mx-auto w-full p-8 pb-16">
-                    <h2 className="text-2xl font-serif font-bold text-[#192F28] mb-8 text-center mt-4">Para qual paciente é o registro?</h2>
+                    <h2 className="text-2xl font-serif font-bold text-brand-primary mb-8 text-center mt-4">Para qual paciente é o registro?</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {patients.map(p => (
                         <motion.button 
@@ -474,10 +473,10 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                           transition={{ duration: 0.2 }}
                           key={p.id}
                           onClick={() => { setSelectedFormPatientId(p.id); setFormStep(2); }}
-                          className="bg-white hover:bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4 cursor-pointer text-center transition-all hover:border-[#C1E2A4] hover:shadow-md h-full group"
+                          className="bg-white hover:bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4 cursor-pointer text-center transition-all hover:border-status-success hover:shadow-md h-full group"
                         >
-                          <div className="bg-[#C1E2A4]/20 group-hover:bg-[#C1E2A4]/40 p-4 rounded-full transition-colors">
-                            <User className="h-8 w-8 text-[#192F28]" />
+                          <div className="bg-status-success/20 group-hover:bg-status-success/40 p-4 rounded-full transition-colors">
+                            <User className="h-8 w-8 text-brand-primary" />
                           </div>
                           <div>
                             <p className="font-bold text-slate-800 text-lg leading-tight">{p.name}</p>
@@ -495,7 +494,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                          <button onClick={() => setFormStep(1)} className="text-slate-400 hover:text-slate-900 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm transition-colors cursor-pointer">
                              <ArrowRight className="h-5 w-5 rotate-180" />
                          </button>
-                         <h2 className="text-2xl font-serif font-bold text-[#192F28] mt-1">O que você deseja registrar hoje?</h2>
+                         <h2 className="text-2xl font-serif font-bold text-brand-primary mt-1">O que você deseja registrar hoje?</h2>
                      </div>
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                        {[
@@ -518,10 +517,10 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                                }
                                setFormStep(3);
                             }}
-                            className="bg-white border border-slate-200 p-6 rounded-2xl flex items-start space-x-5 cursor-pointer text-left transition-all hover:border-[#C1E2A4] hover:shadow-md group"
+                            className="bg-white border border-slate-200 p-6 rounded-2xl flex items-start space-x-5 cursor-pointer text-left transition-all hover:border-status-success hover:shadow-md group"
                          >
-                            <div className="bg-slate-50 group-hover:bg-[#C1E2A4]/30 p-4 rounded-xl shrink-0 transition-colors">
-                               <type.icon className="h-6 w-6 text-slate-700 group-hover:text-[#192F28] transition-colors" />
+                            <div className="bg-slate-50 group-hover:bg-status-success/30 p-4 rounded-xl shrink-0 transition-colors">
+                               <type.icon className="h-6 w-6 text-slate-700 group-hover:text-brand-primary transition-colors" />
                             </div>
                             <div className="pt-1">
                                <h3 className="font-bold text-slate-900 text-lg pb-1">{type.label}</h3>
@@ -545,17 +544,17 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                 {/* Left Hand: Evolution Editor */}
                 <div className="lg:col-span-7 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-serif text-[#192F28] font-semibold flex items-center space-x-2">
-                      <FileText className="h-5 w-5 text-[#C1E2A4]" />
+                    <h2 className="text-lg font-serif text-brand-primary font-semibold flex items-center space-x-2">
+                      <FileText className="h-5 w-5 text-status-success" />
                       <span>Documento de Registro Formal</span>
                     </h2>
                     
                     {signatureStatus === 'unsigned' ? (
-                      <span className="text-[10px] uppercase font-mono font-bold text-slate-500 bg-[#C1E2A4]/35 px-2 py-0.5 rounded border border-[#C1E2A4]/35">
+                      <span className="text-[10px] uppercase font-mono font-bold text-slate-500 bg-status-success/35 px-2 py-0.5 rounded border border-status-success/35">
                         Rascunho Editável
                       </span>
                     ) : (
-                      <span className="text-[10px] uppercase font-mono font-bold text-[#192F28] bg-[#C1E2A4]/20 px-2.5 py-1 rounded border border-[#C1E2A4]/50 flex items-center space-x-1">
+                      <span className="text-[10px] uppercase font-mono font-bold text-brand-primary bg-status-success/20 px-2.5 py-1 rounded border border-status-success/50 flex items-center space-x-1">
                         <ShieldCheck className="h-3 w-3" />
                         <span>Assinado ICP-Brasil</span>
                       </span>
@@ -565,16 +564,16 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm relative">
                     
                     {/* Scribe Textareas with paper design */}
-                    <div className="bg-[#fcfcfc] p-8 min-h-[500px] border-l-4 border-[#C1E2A4] space-y-8 font-sans shadow-inner">
+                    <div className="bg-[#fcfcfc] p-8 min-h-[500px] border-l-4 border-status-success space-y-8 font-sans shadow-inner">
                       
                       {/* Letterhead mock */}
                       <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
                         <div className="flex items-center space-x-3">
-                          <div className="bg-[#192F28] p-2 rounded-lg">
-                            <Hospital className="h-5 w-5 text-[#C1E2A4]" />
+                          <div className="bg-brand-primary p-2 rounded-lg">
+                            <Hospital className="h-5 w-5 text-status-success" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-serif font-bold text-[#192F28] uppercase tracking-wide leading-tight">{dataManager.getDoctor().clinic_name || 'Clínica Médica'}</h3>
+                            <h3 className="text-lg font-serif font-bold text-brand-primary uppercase tracking-wide leading-tight">{dataManager.getDoctor().clinic_name || 'Clínica Médica'}</h3>
                             <p className="text-[10px] uppercase tracking-widest text-slate-400 font-mono">Registro Clínico Oficial</p>
                           </div>
                         </div>
@@ -583,8 +582,8 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                       {/* Evolução Clínica Section */}
                       {(formType === 'livre' || formType === 'soap') && (
                       <div className="space-y-3">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#192F28] uppercase tracking-wider font-mono">
-                          <FileText className="h-3.5 w-3.5 text-[#C1E2A4]" />
+                        <label className="flex items-center gap-2 text-xs font-bold text-brand-primary uppercase tracking-wider font-mono">
+                          <FileText className="h-3.5 w-3.5 text-status-success" />
                           {formType === 'livre' ? 'Evolução Clínica' : 'Evolução (SOAP)'}
                         </label>
                         {signatureStatus === 'signed_icp' ? (
@@ -597,7 +596,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                               value={evolutionText}
                               onChange={(e) => setEvolutionText(e.target.value)}
                               placeholder="Descreva a evolução aqui..."
-                              className="w-full h-48 bg-transparent border-0 border-b border-dashed border-slate-300 focus:outline-none focus:border-[#192F28] focus:ring-0 p-0 text-sm leading-8 text-slate-800 placeholder:text-slate-300 font-sans resize-y shadow-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjMyIj48bGluZSB4MT0iMCIgeTE9IjMxIiB4Mj0iMTAwJSIgeTI9IjMxIiBzdHJva2U9IiNlMGUwZTAiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==')] bg-local"
+                              className="w-full h-48 bg-transparent border-0 border-b border-dashed border-slate-300 focus:outline-none focus:border-brand-primary focus:ring-0 p-0 text-sm leading-8 text-slate-800 placeholder:text-slate-300 font-sans resize-y shadow-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjMyIj48bGluZSB4MT0iMCIgeTE9IjMxIiB4Mj0iMTAwJSIgeTI9IjMxIiBzdHJva2U9IiNlMGUwZTAiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==')] bg-local"
                               disabled={!selectedFormPatientId}
                               style={{ lineHeight: '32px' }}
                             />
@@ -609,8 +608,8 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                       {/* Prontuário Médio Section */}
                       {(formType === 'livre' || formType === 'receita' || formType === 'exame' || formType === 'atestado') && (
                       <div className="space-y-3">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#192F28] uppercase tracking-wider font-mono">
-                          <FileText className="h-3.5 w-3.5 text-[#C1E2A4]" />
+                        <label className="flex items-center gap-2 text-xs font-bold text-brand-primary uppercase tracking-wider font-mono">
+                          <FileText className="h-3.5 w-3.5 text-status-success" />
                           {formType === 'receita' ? 'Receituário' : formType === 'exame' ? 'Solicitação de Exames' : formType === 'atestado' ? 'Atestado Médico' : 'Prontuário Médico (Conduta & Exames)'}
                         </label>
                         {signatureStatus === 'signed_icp' ? (
@@ -623,7 +622,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                               value={prontuarioText}
                               onChange={(e) => setProntuarioText(e.target.value)}
                               placeholder="Detalhes adicionais, exames e condutas..."
-                              className="w-full h-40 bg-transparent border-0 border-b border-dashed border-slate-300 focus:outline-none focus:border-[#192F28] focus:ring-0 p-0 text-sm leading-8 text-slate-800 placeholder:text-slate-300 font-sans resize-y shadow-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjMyIj48bGluZSB4MT0iMCIgeTE9IjMxIiB4Mj0iMTAwJSIgeTI9IjMxIiBzdHJva2U9IiNlMGUwZTAiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==')] bg-local"
+                              className="w-full h-40 bg-transparent border-0 border-b border-dashed border-slate-300 focus:outline-none focus:border-brand-primary focus:ring-0 p-0 text-sm leading-8 text-slate-800 placeholder:text-slate-300 font-sans resize-y shadow-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjMyIj48bGluZSB4MT0iMCIgeTE9IjMxIiB4Mj0iMTAwJSIgeTI9IjMxIiBzdHJva2U9IiNlMGUwZTAiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==')] bg-local"
                               disabled={!selectedFormPatientId}
                               style={{ lineHeight: '32px' }}
                             />
@@ -636,9 +635,9 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
 
                     {/* Signed block overlay */}
                     {signatureStatus === 'signed_icp' && (
-                      <div className="bg-[#192F28] text-white p-5 border-t border-slate-200/30 space-y-1.5 rounded-b-xl">
+                      <div className="bg-brand-primary text-white p-5 border-t border-slate-200/30 space-y-1.5 rounded-b-xl">
                         <div className="flex items-center space-x-2">
-                          <ShieldCheck className="h-5 w-5 text-[#C1E2A4]" />
+                          <ShieldCheck className="h-5 w-5 text-status-success" />
                           <span className="font-serif font-bold text-sm tracking-tight text-white block">Documento Criptografado e Assinado Digitalmente</span>
                         </div>
                         <div className="font-mono text-[9px] text-zinc-300 leading-relaxed grid grid-cols-1 md:grid-cols-2 gap-2 pt-1 border-t border-white/10">
@@ -648,7 +647,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                           </div>
                           <div>
                             <strong>DATA ASSINATURA:</strong> {new Date(signedAt!).toLocaleString('pt-BR')}<br />
-                            <strong>ALGORÍTMO HASH:</strong> <span className="text-[#C1E2A4]">{signatureHash}</span>
+                            <strong>ALGORÍTMO HASH:</strong> <span className="text-status-success">{signatureHash}</span>
                           </div>
                         </div>
                       </div>
@@ -660,7 +659,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                         <button
                           type="button"
                           onClick={() => { handleSaveDraft(); setShowForm(false); }}
-                          className="text-xs text-[#192F28] font-mono uppercase tracking-wider font-semibold border border-slate-300 px-4 py-2.5 rounded-lg hover:bg-slate-100 cursor-pointer transition"
+                          className="text-xs text-brand-primary font-mono uppercase tracking-wider font-semibold border border-slate-300 px-4 py-2.5 rounded-lg hover:bg-slate-100 cursor-pointer transition"
                         >
                           Salvar Rascunho e Fechar
                         </button>
@@ -668,7 +667,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                           type="button"
                           onClick={() => { handleSignDigitalICP(); setShowForm(false); }}
                           disabled={!evolutionText && !prontuarioText}
-                          className="bg-[#192F28] text-white text-xs font-mono uppercase tracking-wider font-semibold px-4.5 py-2.5 rounded-lg hover:bg-[#192F28]/95 transition flex items-center space-x-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="bg-brand-primary text-white text-xs font-mono uppercase tracking-wider font-semibold px-4.5 py-2.5 rounded-lg hover:bg-brand-primary/95 transition flex items-center space-x-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Lock className="h-3.5 w-3.5" />
                           <span>Assinar Prontuário (ICP-Brasil)</span>
@@ -681,30 +680,30 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
 
                 {/* Right Hand Sidebar: Diary insights compiled from WhatsApp diaries */}
                 <div className="lg:col-span-5 space-y-4">
-                  <h2 className="text-lg font-serif text-[#192F28] font-semibold flex items-center space-x-2">
-                    <Brain className="h-5 w-5 text-[#C1E2A4]" />
+                  <h2 className="text-lg font-serif text-brand-primary font-semibold flex items-center space-x-2">
+                    <Brain className="h-5 w-5 text-status-success" />
                     <span>Insights do Diário WhatsApp</span>
                   </h2>
 
                   {/* AI CDS Insight Block */}
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4 shadow-sm">
                     <div className="flex items-center space-x-2 border-b border-slate-200 pb-3">
-                      <Sparkles className="h-4.5 w-4.5 text-[#192F28]" />
-                      <span className="font-mono text-[#192F28] font-bold text-xs uppercase tracking-wider">Clinical Decision Support</span>
+                      <Sparkles className="h-4.5 w-4.5 text-brand-primary" />
+                      <span className="font-mono text-brand-primary font-bold text-xs uppercase tracking-wider">Clinical Decision Support</span>
                     </div>
 
                     <div className="space-y-4 text-xs font-medium">
-                      <div className="bg-white p-4 border border-slate-200 rounded-lg text-[#192F28] leading-relaxed whitespace-pre-wrap">
+                      <div className="bg-white p-4 border border-slate-200 rounded-lg text-brand-primary leading-relaxed whitespace-pre-wrap">
                         {aiSummary}
                       </div>
                       <div className="text-[10px] text-slate-500 font-mono leading-normal pt-1 flex items-start space-x-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 text-[#192F28] mt-0.5 shrink-0" />
+                        <AlertTriangle className="h-3.5 w-3.5 text-brand-primary mt-0.5 shrink-0" />
                         <span>O boletim de inteligência compila marcadores de humor coletados via WhatsApp. O profissional de saúde assume total responsabilidade pelas decisões prescritas.</span>
                       </div>
                     </div>
 
                     {/* Last diary logs */}
-                    <div className="space-y-3 pt-4 border-t border-slate-200 text-[#192F28]">
+                    <div className="space-y-3 pt-4 border-t border-slate-200 text-brand-primary">
                       <span className="text-[10px] uppercase font-mono text-slate-500 block tracking-wider font-bold mb-3">Mensagens Recentes do Paciente (WhatsApp)</span>
                       
                       {patientDiaries.length === 0 ? (
@@ -718,9 +717,9 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                             >
                               <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 mb-2">
                                 <span>{new Date(entry.created_at).toLocaleDateString('pt-BR')} {new Date(entry.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
-                                <span className={`font-bold px-1.5 py-0.5 rounded ${entry.crisis_flag ? 'text-red-700 bg-red-100' : 'text-[#192F28] bg-slate-100'}`}>Score: {entry.sentiment_score}</span>
+                                <span className={`font-bold px-1.5 py-0.5 rounded ${entry.crisis_flag ? 'text-red-700 bg-red-100' : 'text-brand-primary bg-slate-100'}`}>Score: {entry.sentiment_score}</span>
                               </div>
-                              <p className="text-[#192F28] italic font-medium pt-1">
+                              <p className="text-brand-primary italic font-medium pt-1">
                                 "{entry.content}"
                               </p>
                             </div>
@@ -743,7 +742,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
 
       {/* History archives block */}
       <div className="space-y-4">
-        <h3 className="text-lg font-serif text-[#192F28] font-semibold">
+        <h3 className="text-lg font-serif text-brand-primary font-semibold">
           Histórico de Prontuários Clinicos
           {filterPatientId ? ` (${getPatientName(filterPatientId)})` : ''}
         </h3>
@@ -760,13 +759,13 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               >
                 <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-sm text-[#192F28]">{getPatientName(record.patient_id)}</span>
-                    <div className="flex items-center space-x-1 font-mono text-[10px] text-slate-500 font-bold group-hover:text-[#192F28] transition-colors">
+                    <span className="font-bold text-sm text-brand-primary">{getPatientName(record.patient_id)}</span>
+                    <div className="flex items-center space-x-1 font-mono text-[10px] text-slate-500 font-bold group-hover:text-brand-primary transition-colors">
                       <FileText className="h-3.5 w-3.5" />
                       <span>{getRecordTypeLabel(record)}</span>
                     </div>
                   </div>
-                  <span className={`text-[8px] font-mono uppercase font-bold px-2 py-0.5 rounded mt-0.5 ${record.signature_status === 'signed_icp' ? 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/30' : 'bg-[#C1E2A4]/20 text-[#192F28] border border-[#C1E2A4]/40'}`}>
+                  <span className={`text-[8px] font-mono uppercase font-bold px-2 py-0.5 rounded mt-0.5 ${record.signature_status === 'signed_icp' ? 'bg-status-success/20 text-brand-primary border border-status-success/30' : 'bg-status-success/20 text-brand-primary border border-status-success/40'}`}>
                     {record.signature_status === 'signed_icp' ? 'Assinado' : 'Rascunho'}
                   </span>
                 </div>
@@ -776,7 +775,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                 </p>
 
                 {record.ai_summary && (
-                  <div className="bg-slate-50 p-2.5 rounded-lg text-[10px] text-[#192F28] font-mono border border-slate-200">
+                  <div className="bg-slate-50 p-2.5 rounded-lg text-[10px] text-brand-primary font-mono border border-slate-200">
                     <span className="font-bold block uppercase tracking-wider text-[8px] text-slate-500 mb-1">Sintético CDS:</span>
                     <span className="line-clamp-2">{record.ai_summary}</span>
                   </div>
@@ -787,14 +786,14 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleExportPDF(record); }}
-                      className="text-[#192F28] hover:text-[#192F28]/70 flex items-center space-x-1 font-semibold transition-colors cursor-pointer"
+                      className="text-brand-primary hover:text-brand-primary/70 flex items-center space-x-1 font-semibold transition-colors cursor-pointer"
                       title="Exportar PDF"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Baixar PDF</span>
                     </button>
                     {record.signed_at && (
-                      <span className="text-[#192F28] font-semibold flex items-center space-x-0.5 bg-[#C1E2A4]/20 px-1.5 py-0.5 rounded">
+                      <span className="text-brand-primary font-semibold flex items-center space-x-0.5 bg-status-success/20 px-1.5 py-0.5 rounded">
                         <Check className="h-3 w-3" />
                         <span>Selo ICP</span>
                       </span>
@@ -810,7 +809,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
       {/* Hidden Export Template */}
       {exportRecord && (
         <div className="absolute top-[9999px] left-[9999px] pointer-events-none opacity-0">
-          <div ref={exportRef} className="w-[794px] min-h-[1122px] bg-[#ffffff] px-12 pt-8 pb-16 font-sans text-[#0f172a] border-t-8 border-[#192F28] relative box-border">
+          <div ref={exportRef} className="w-[794px] min-h-[1122px] bg-[#ffffff] px-12 pt-8 pb-16 font-sans text-[#0f172a] border-t-8 border-brand-primary relative box-border">
             
             {/* Clinic Logo */}
             {dataManager.getDoctor().clinic_logo && (
@@ -821,11 +820,11 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
 
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-[#e2e8f0] pb-6 mb-6 w-full">
-              <div className="bg-[#192F28] p-3 rounded-xl shrink-0">
-                <Hospital className="h-8 w-8 text-[#C1E2A4]" />
+              <div className="bg-brand-primary p-3 rounded-xl shrink-0">
+                <Hospital className="h-8 w-8 text-status-success" />
               </div>
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-[#192F28]">{dataManager.getDoctor().clinic_name || 'Clínica Médica'}</h1>
+                <h1 className="text-2xl font-bold text-brand-primary">{dataManager.getDoctor().clinic_name || 'Clínica Médica'}</h1>
                 <p className="text-sm font-medium text-[#64748b] mt-1">Prontuário Médico Eletrônico</p>
               </div>
             </div>
@@ -840,14 +839,14 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                  {/* Patient */}
                  <div className="flex-1 flex flex-col justify-start">
                     <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#94a3b8] mb-1">Paciente</h3>
-                    <p className="text-xl font-bold text-[#192F28]">{getPatientName(exportRecord.patient_id)}</p>
+                    <p className="text-xl font-bold text-brand-primary">{getPatientName(exportRecord.patient_id)}</p>
                  </div>
 
                  {/* Doctor Signature */}
                  <div className="flex-1 flex flex-col justify-start">
                     <h3 className="text-[10px] uppercase tracking-widest font-bold text-[#94a3b8] mb-1">Médico Responsável</h3>
                     <div className="mt-8 border-t border-[#94a3b8] pt-2 max-w-[240px]">
-                      <p className="text-sm font-bold text-[#192F28]">Dr(a). {dataManager.getDoctor().name.replace(/^Dr\(a\)\.\s*/, '').replace(/^Dr\.\s*/, '')}</p>
+                      <p className="text-sm font-bold text-brand-primary">Dr(a). {dataManager.getDoctor().name.replace(/^Dr\(a\)\.\s*/, '').replace(/^Dr\.\s*/, '')}</p>
                       <p className="text-xs text-[#64748b] font-mono mt-0.5">CRM: {dataManager.getDoctor().crp_crm}</p>
                     </div>
                  </div>
@@ -877,7 +876,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
 
             {/* Date and Context */}
             <div className="mb-6 flex justify-between items-end border-b-2 border-[#f1f5f9] pb-2">
-              <h3 className="text-sm font-bold text-[#192F28] uppercase tracking-wider flex items-center gap-2">
+              <h3 className="text-sm font-bold text-brand-primary uppercase tracking-wider flex items-center gap-2">
                 <FileText className="h-4 w-4 text-[#059669]" />
                 Registros Clínicos
               </h3>
@@ -910,8 +909,8 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
             {/* Insights */}
             {exportRecord.ai_summary && (
               <div className="mb-12 bg-[#f8fafc] p-6 rounded-xl border border-[#e2e8f0]">
-                 <h3 className="text-sm font-bold text-[#192F28] uppercase tracking-wider mb-4 flex items-center gap-2">
-                   <Sparkles className="h-4 w-4 text-[#3b82f6]" />
+                 <h3 className="text-sm font-bold text-brand-primary uppercase tracking-wider mb-4 flex items-center gap-2">
+                   <Sparkles className="h-4 w-4 text-status-success" />
                    Observações Auxiliares (CDS)
                  </h3>
                  <div className="text-sm text-[#334155] leading-relaxed whitespace-pre-wrap">
@@ -929,12 +928,12 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
           <div className="bg-white max-w-4xl w-full h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
             
             {/* Modal Header */}
-            <div className="bg-[#192F28] px-8 py-5 flex items-center justify-between shrink-0">
+            <div className="bg-brand-primary px-8 py-5 flex items-center justify-between shrink-0">
               <div className="flex items-center space-x-3 text-white">
-                <FileText className="h-5 w-5 text-[#C1E2A4]" />
+                <FileText className="h-5 w-5 text-status-success" />
                 <div>
                   <h2 className="text-lg font-bold font-serif">{getPatientName(viewingRecord.patient_id)}</h2>
-                  <p className="text-xs font-mono text-[#C1E2A4]/80">{getRecordTypeLabel(viewingRecord)} • validado em {new Date(viewingRecord.created_at).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs font-mono text-status-success/80">{getRecordTypeLabel(viewingRecord)} • validado em {new Date(viewingRecord.created_at).toLocaleDateString('pt-BR')}</p>
                 </div>
               </div>
               <button onClick={() => setViewingRecord(null)} className="text-white/60 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-2 rounded-full cursor-pointer">
@@ -947,7 +946,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               {(viewingRecord.evolution_text || (!viewingRecord.evolution_text && !viewingRecord.prontuario_text)) && (
                 <div className="bg-white p-6 rounded-xl border border-slate-200">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center space-x-2 border-b border-slate-100 pb-2">
-                    <FileText className="h-4 w-4 text-[#192F28]" />
+                    <FileText className="h-4 w-4 text-brand-primary" />
                     <span>Evolução Clínica / SOAP</span>
                   </h4>
                   <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
@@ -959,7 +958,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               {viewingRecord.prontuario_text && (
                 <div className="bg-white p-6 rounded-xl border border-slate-200">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center space-x-2 border-b border-slate-100 pb-2">
-                    <FileText className="h-4 w-4 text-[#192F28]" />
+                    <FileText className="h-4 w-4 text-brand-primary" />
                     <span>Prontuário Médico</span>
                   </h4>
                   <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">
@@ -969,8 +968,8 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               )}
 
               {viewingRecord.ai_summary && (
-                <div className="bg-blue-50 border border-blue-100 p-6 rounded-xl">
-                  <h4 className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-4 flex items-center space-x-2">
+                <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-xl">
+                  <h4 className="text-xs font-bold text-brand-primary uppercase tracking-widest mb-4 flex items-center space-x-2">
                     <Sparkles className="h-4 w-4" />
                     <span>Observações Auxiliares (CDS)</span>
                   </h4>
@@ -993,7 +992,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                 </button>
                 <button 
                   onClick={() => handleEditRecord(viewingRecord)}
-                  className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center space-x-2 cursor-pointer border border-transparent"
+                  className="text-brand-primary hover:text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center space-x-2 cursor-pointer border border-transparent"
                 >
                   <Edit3 className="h-4 w-4" />
                   <span>Editar Prontuário</span>
@@ -1009,7 +1008,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                 </button>
                 <button 
                   onClick={() => handleExportPDF(viewingRecord)}
-                  className="bg-[#192F28] hover:bg-[#192F28]/95 text-white px-5 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center space-x-2 cursor-pointer"
+                  className="bg-brand-primary hover:bg-brand-primary/95 text-white px-5 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center space-x-2 cursor-pointer"
                 >
                   <Download className="h-4 w-4" />
                   <span>Baixar PDF Novamente</span>

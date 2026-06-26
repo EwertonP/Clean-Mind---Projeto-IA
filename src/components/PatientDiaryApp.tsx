@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, Search, Mail, Phone, Plus, MessageCircle, Send, CheckCircle2, Clock, TrendingUp, TrendingDown, Minus, Image as ImageIcon, X, Trash2, CheckSquare, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Patient, Appointment, dataManager, compressImage } from '../data';
@@ -8,6 +8,8 @@ import { maskPhone } from '../utils/masks';
 import { useStore } from '../store';
 
 interface PatientDiaryAppProps {
+  patient?: Patient;
+  onLogout?: () => void;
 }
 
 // Fabricated extra data to match the visual mockup precisely
@@ -22,25 +24,25 @@ const MOCK_EXTRA_DATA: Record<string, any> = {
 };
 
 export default function PatientDiaryApp(props: PatientDiaryAppProps) {
-  const patientsStore = useStore(state => state.patients);
-  const appointmentsStore = useStore(state => state.appointments);
-  const doctorsStore = useStore(state => state.doctors);
+  const rawPatientsStore = useStore(state => state.patients);
+  const appointmentsStore = useStore(state => state.appointments); const appointments = useMemo(() => appointmentsStore.filter(a => a && a.date), [appointmentsStore]);
+  const doctorsStoreStore = useStore(state => state.doctors); const doctorsStore = useMemo(() => doctorsStoreStore.filter(Boolean), [doctorsStoreStore]);
 
   // Add mock tags to initial patients for presentation purposes if they don't have any
-  const patients = React.useMemo(() => patientsStore.map(p => {
+  const patients = React.useMemo(() => rawPatientsStore.filter(Boolean).map(p => {
     if (p.tags && p.tags.length > 0) return p;
     if (p.name === 'Bruno Alencar') return { ...p, tags: ['Risco'] };
     if (p.name === 'Elisa Souza') return { ...p, tags: ['Acompanhamento', 'Financeiro Pendente'] };
     if (p.name === 'Daniel Rocha') return { ...p, tags: ['Alta programada'] };
     return p;
-  }), [patientsStore]);
+  }), [rawPatientsStore]);
 
-  const appointments = appointmentsStore;
   const doctors = doctorsStore.filter(d => d.role === 'doctor' || (d.role !== 'admin' && d.crp_crm && d.crp_crm !== ''));
   
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [newPatientName, setNewPatientName] = useState('');
   const [newPatientEmail, setNewPatientEmail] = useState('');
+  const [newPatientCpf, setNewPatientCpf] = useState('');
   const [newPatientPhone, setNewPatientPhone] = useState('');
   const [newPatientDiag, setNewPatientDiag] = useState('');
   const [newPatientTags, setNewPatientTags] = useState('');
@@ -52,7 +54,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'status'>('name_asc');
   const [selectedPatientForDetail, setSelectedPatientForDetail] = useState<Patient | null>(null);
   const [toastMessage, setToastMessage] = useState('');
-  const [formErrors, setFormErrors] = useState<{name?: string, email?: string, phone?: string}>({});
+  const [formErrors, setFormErrors] = useState<{name?: string, email?: string, cpf?: string, phone?: string}>({});
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
 
   const generateWhatsAppLink = (phone: string, name: string) => {
@@ -61,12 +63,25 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
     return `https://wa.me/55${numericPhone}?text=${message}`;
   };
 
+  const maskCpf = (v: string) => {
+    v = v.replace(/\D/g, '');
+    if (v.length <= 11) {
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    return v;
+  };
+
   const validateForm = () => {
-    const errors: {name?: string, email?: string, phone?: string} = {};
+    const errors: {name?: string, cpf?: string, email?: string, phone?: string} = {};
     if (!newPatientName.trim()) errors.name = 'O nome é obrigatório';
     if (!newPatientEmail.trim()) errors.email = 'O email é obrigatório';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newPatientEmail)) errors.email = 'Email em formato inválido';
     
+    if (!newPatientCpf.trim()) errors.cpf = 'O CPF é obrigatório';
+    else if (newPatientCpf.replace(/\D/g, '').length < 11) errors.cpf = 'CPF inválido';
+
     if (!newPatientPhone.trim()) errors.phone = 'O telefone é obrigatório';
     else if (newPatientPhone.replace(/\D/g, '').length < 10) errors.phone = 'Telefone inválido';
     
@@ -109,6 +124,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
     const newPat = dataManager.addPatient({
       name: newPatientName,
       email: newPatientEmail,
+      cpf: newPatientCpf,
       phone: newPatientPhone,
       health_insurance: newPatientInsurance,
       status: 'active',
@@ -119,6 +135,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
     
     setNewPatientName('');
     setNewPatientEmail('');
+    setNewPatientCpf('');
     setNewPatientPhone('');
     setNewPatientDiag('');
     setNewPatientTags('');
@@ -210,7 +227,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
             transition={{ duration: 0.2 }}
             className="fixed bottom-4 right-4 z-50 max-w-xs bg-slate-800 text-white p-3 rounded-lg shadow-lg flex items-center space-x-2"
           >
-            <CheckCircle2 className="h-4 w-4 text-[#C1E2A4] shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success shrink-0" />
             <p className="text-xs font-medium">{toastMessage}</p>
           </motion.div>
         )}
@@ -301,6 +318,29 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   />
                   {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-1.5">CPF * (Para Login no Diário)</label>
+                  <input
+                    type="text"
+                    required
+                    value={newPatientCpf}
+                    onChange={(e) => {
+                      setNewPatientCpf(maskCpf(e.target.value));
+                      if (formErrors.cpf) setFormErrors(prev => ({ ...prev, cpf: undefined }));
+                    }}
+                    onBlur={() => {
+                      if (!newPatientCpf.trim()) setFormErrors(prev => ({ ...prev, cpf: 'O CPF é obrigatório' }));
+                      else if (newPatientCpf.replace(/\D/g, '').length < 11) setFormErrors(prev => ({ ...prev, cpf: 'CPF inválido' }));
+                    }}
+                    maxLength={14}
+                    className={`w-full px-4 py-2.5 border ${formErrors.cpf ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
+                    placeholder="000.000.000-00"
+                  />
+                  {formErrors.cpf && <p className="text-red-500 text-xs mt-1">{formErrors.cpf}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1.5">Telefone/WhatsApp *</label>
                   <input
@@ -435,7 +475,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
           </button>
           <button 
             onClick={() => setShowPatientForm(true)}
-            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-[#192F28] hover:bg-slate-800 text-[#C1E2A4] transition flex items-center shadow-md h-10 cursor-pointer"
+            className="px-5 py-2 text-[14px] font-bold rounded-full border border-transparent bg-brand-primary hover:bg-slate-800 text-status-success transition flex items-center shadow-md h-10 cursor-pointer"
           >
             <span className="mr-1.5 text-lg leading-none mb-[2px]">+</span> Novo Paciente
           </button>
@@ -451,25 +491,25 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
             placeholder="Buscar por nome ou email" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 py-2.5 w-full border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#C1E2A4]/20 focus:border-[#C1E2A4] shadow-sm"
+            className="pl-10 pr-4 py-2.5 w-full border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-status-success/20 focus:border-status-success shadow-sm"
           />
         </div>
         <div className="flex bg-white border border-slate-200 rounded-lg p-1 shadow-sm overflow-x-auto space-x-1">
           <button 
             onClick={() => setFilterType('Todos')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${filterType === 'Todos' ? 'bg-[#C1E2A4] text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${filterType === 'Todos' ? 'bg-status-success text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
           >
             Todos ({patients.length})
           </button>
           <button 
             onClick={() => setFilterType('Ativos')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${filterType === 'Ativos' ? 'bg-[#C1E2A4] text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${filterType === 'Ativos' ? 'bg-status-success text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
           >
             Ativos ({activeCount})
           </button>
           <button 
             onClick={() => setFilterType('Inativos')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${filterType === 'Inativos' ? 'bg-[#C1E2A4] text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${filterType === 'Inativos' ? 'bg-status-success text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
           >
             Inativos ({inactiveCount})
           </button>
@@ -478,7 +518,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-[#C1E2A4] focus:border-[#C1E2A4] block p-2 outline-none cursor-pointer hover:bg-slate-50 transition-colors shadow-sm"
+            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-status-success focus:border-status-success block p-2 outline-none cursor-pointer hover:bg-slate-50 transition-colors shadow-sm"
           >
             <option value="name_asc">Nome (A-Z)</option>
             <option value="name_desc">Nome (Z-A)</option>
@@ -494,7 +534,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-[#192F28] rounded-xl shadow-md border border-[#192F28] p-3 flex items-center justify-between mb-4 overflow-hidden"
+            className="bg-brand-primary rounded-xl shadow-md border border-brand-primary p-3 flex items-center justify-between mb-4 overflow-hidden"
           >
             <div className="flex items-center space-x-4 pl-2">
               <span className="text-sm font-medium text-white">{selectedPatients.size} selecionado(s)</span>
@@ -543,7 +583,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                     type="checkbox" 
                     checked={filteredPatients.length > 0 && selectedPatients.size === filteredPatients.length}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-slate-300 text-[#192F28] focus:ring-[#192F28]"
+                    className="w-4 h-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
                   />
                 </th>
                 <th className="py-4 px-6 text-sm font-semibold text-slate-500 border-b border-slate-200">Paciente</th>
@@ -630,7 +670,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
               return (
                 <tr 
                   key={patient.id} 
-                  className={`hover:bg-slate-50 transition-colors bg-white group cursor-pointer ${selectedPatients.has(patient.id) ? 'bg-[#C1E2A4]/10 hover:bg-[#C1E2A4]/20' : ''}`}
+                  className={`hover:bg-slate-50 transition-colors bg-white group cursor-pointer ${selectedPatients.has(patient.id) ? 'bg-status-success/10 hover:bg-status-success/20' : ''}`}
                   onClick={(e) => {
                     // Ignore clicks on checkbox area so it doesn't open modal when checking
                     if ((e.target as HTMLElement).closest('.checkbox-cell')) return;
@@ -645,7 +685,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                         e.stopPropagation();
                         toggleSelectPatient(patient.id);
                       }}
-                      className="w-4 h-4 rounded border-slate-300 text-[#192F28] focus:ring-[#192F28] cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
                     />
                   </td>
                   <td className="py-4 px-6">
@@ -663,8 +703,8 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                       </div>
                       <div className="flex flex-col justify-center">
                        <div className="font-bold text-slate-900 text-sm whitespace-nowrap leading-tight flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${isInactive ? 'bg-slate-300' : 'bg-[#C1E2A4]'}`} title={isInactive ? 'Inativo' : 'Ativo'} />
-                          <span className="group-hover:text-[#192F28]/70 transition-colors">{patient.name}</span>
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${isInactive ? 'bg-slate-300' : 'bg-status-success'}`} title={isInactive ? 'Inativo' : 'Ativo'} />
+                          <span className="group-hover:text-brand-primary/70 transition-colors">{patient.name}</span>
                           {!isInactive && hasNoRecentAppt && (
                             <div title="Sem agendamento há mais de 30 dias" className="flex items-center justify-center text-amber-500 bg-amber-50/80 p-1 rounded-md border border-amber-100/50">
                               <Clock className="w-3.5 h-3.5" />
@@ -677,10 +717,10 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                               const norm = tag.toLowerCase().trim();
                               let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
                               if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
-                              else if (norm.includes('acompanhamento')) colorClass = 'bg-sky-100 text-sky-700 border-sky-200';
+                              else if (norm.includes('acompanhamento')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                               else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
-                              else if (norm.includes('alta')) colorClass = 'bg-[#C1E2A4]/40 text-[#192F28] border-[#C1E2A4]/50';
-                              else colorClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                              else if (norm.includes('alta')) colorClass = 'bg-status-success/40 text-brand-primary border-status-success/50';
+                              else colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                               
                               return (
                                 <span key={idx} className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${colorClass} tracking-wide whitespace-nowrap leading-none`}>
@@ -694,7 +734,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-brand-primary whitespace-nowrap">
                       {fakeData.diag || 'Avaliação Inicial'}
                     </span>
                   </td>
@@ -718,7 +758,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   <td className="py-4 px-6 text-center text-sm font-bold text-slate-900">
                     <div className="flex items-center justify-center space-x-1.5">
                       <span>{completedSessions}</span>
-                      {fakeData.trend === 'up' && <span title="Alta frequência recente"><TrendingUp className="w-4 h-4 text-[#192F28]/70" /></span>}
+                      {fakeData.trend === 'up' && <span title="Alta frequência recente"><TrendingUp className="w-4 h-4 text-brand-primary/70" /></span>}
                       {fakeData.trend === 'down' && <span title="Baixa frequência recente"><TrendingDown className="w-4 h-4 text-rose-500" /></span>}
                       {fakeData.trend === 'neutral' && <span title="Frequência estável"><Minus className="w-4 h-4 text-slate-300" /></span>}
                     </div>
@@ -732,7 +772,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                         Inativo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#C1E2A4] text-slate-800">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-status-success text-slate-800">
                         Ativo
                       </span>
                     )}
@@ -744,14 +784,14 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                         target="_blank"
                         rel="noreferrer"
                         title="Enviar WhatsApp"
-                        className="p-1.5 text-[#192F28] hover:bg-[#C1E2A4]/20 rounded-md transition-colors"
+                        className="p-1.5 text-brand-primary hover:bg-status-success/20 rounded-md transition-colors"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <MessageCircle className="w-4 h-4" />
                       </a>
                       <button 
                         onClick={(e) => { e.stopPropagation(); setSelectedPatientForDetail(patient); }}
-                        className="text-sm font-medium text-slate-700 hover:text-[#192F28]/70 transition-colors uppercase tracking-wider title-case cursor-pointer"
+                        className="text-sm font-medium text-slate-700 hover:text-brand-primary/70 transition-colors uppercase tracking-wider title-case cursor-pointer"
                       >
                         Perfil
                       </button>
