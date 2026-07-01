@@ -292,7 +292,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   onBlur={() => {
                     if (!newPatientName.trim()) setFormErrors(prev => ({ ...prev, name: 'O nome é obrigatório' }));
                   }}
-                  className={`w-full px-4 py-2.5 border ${formErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
+                  className={`w-full px-4 py-2.5 border ${formErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-brand-primary focus:ring-brand-primary'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                   placeholder="Ex: Maria Silva Santos"
                 />
                 {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
@@ -313,7 +313,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                       if (!newPatientEmail.trim()) setFormErrors(prev => ({ ...prev, email: 'O email é obrigatório' }));
                       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newPatientEmail)) setFormErrors(prev => ({ ...prev, email: 'Email em formato inválido' }));
                     }}
-                    className={`w-full px-4 py-2.5 border ${formErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
+                    className={`w-full px-4 py-2.5 border ${formErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-brand-primary focus:ring-brand-primary'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                     placeholder="email@exemplo.com"
                   />
                   {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
@@ -333,7 +333,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                       else if (newPatientCpf.replace(/\D/g, '').length < 11) setFormErrors(prev => ({ ...prev, cpf: 'CPF inválido' }));
                     }}
                     maxLength={14}
-                    className={`w-full px-4 py-2.5 border ${formErrors.cpf ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
+                    className={`w-full px-4 py-2.5 border ${formErrors.cpf ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-brand-primary focus:ring-brand-primary'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                     placeholder="000.000.000-00"
                   />
                   {formErrors.cpf && <p className="text-red-500 text-xs mt-1">{formErrors.cpf}</p>}
@@ -358,7 +358,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                     pattern="\(\d{2}\) \d{4,5}-\d{4}"
                     minLength={14}
                     maxLength={15}
-                    className={`w-full px-4 py-2.5 border ${formErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-[#86EFAC] focus:ring-[#86EFAC]'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
+                    className={`w-full px-4 py-2.5 border ${formErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 focus:border-brand-primary focus:ring-brand-primary'} rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-1`}
                     placeholder="(11) 98765-4321"
                   />
                   {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
@@ -372,7 +372,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                     required
                     value={newPatientInsurance}
                     onChange={(e) => setNewPatientInsurance(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                   >
                     <option value="Particular">Particular</option>
                     <option value="Amil">Amil</option>
@@ -388,7 +388,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                     required
                     value={newPatientDoctorId}
                     onChange={(e) => setNewPatientDoctorId(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                   >
                     {doctors.map(doc => (
                       <option key={doc.id} value={doc.id}>{doc.name}</option>
@@ -403,7 +403,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   type="text"
                   value={newPatientDiag}
                   onChange={(e) => setNewPatientDiag(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                   placeholder="Ex: Transtorno de Ansiedade Generalizada"
                 />
               </div>
@@ -414,7 +414,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   type="text"
                   value={newPatientTags}
                   onChange={(e) => setNewPatientTags(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                   placeholder="Ex: Risco, Acompanhamento, Financeiro Pendente"
                 />
               </div>
@@ -432,7 +432,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 text-sm font-semibold text-white bg-[#86EFAC] hover:bg-[#6EE7B7] rounded-xl transition-colors border border-transparent cursor-pointer flex items-center justify-center space-x-2 shadow-sm"
+                    className="flex-1 py-2.5 text-sm font-semibold text-status-success bg-brand-primary hover:bg-slate-800 rounded-xl transition-colors border border-transparent cursor-pointer flex items-center justify-center space-x-2 shadow-sm"
                   >
                     <Send className="h-4 w-4" />
                     <span>Salvar e Enviar Convite</span>
@@ -448,7 +448,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Pacientes</h1>
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">Pacientes</h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1">Gerencie a lista de pacientes ativos e inativos da clínica.</p>
         </div>
         <div className="flex items-center space-x-3">
@@ -670,7 +670,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
               return (
                 <tr 
                   key={patient.id} 
-                  className={`hover:bg-slate-50 transition-colors bg-white group cursor-pointer ${selectedPatients.has(patient.id) ? 'bg-status-success/10 hover:bg-status-success/20' : ''}`}
+                  className={`hover:bg-slate-50 hover:scale-[1.02] transition-all duration-200 ease-in-out origin-center bg-white group cursor-pointer ${selectedPatients.has(patient.id) ? 'bg-status-success/10 hover:bg-status-success/20' : ''}`}
                   onClick={(e) => {
                     // Ignore clicks on checkbox area so it doesn't open modal when checking
                     if ((e.target as HTMLElement).closest('.checkbox-cell')) return;

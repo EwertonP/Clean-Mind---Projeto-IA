@@ -111,7 +111,7 @@ export function AgencyFinanceDashboard() {
              <DollarSign className="w-5 h-5" />
              <span className="text-[13px] font-bold tracking-wider text-brand-primary uppercase">Financeiro</span>
            </div>
-           <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Receita e Assinaturas</h1>
+           <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">Receita e Assinaturas</h1>
            <p className="text-[15px] font-medium text-slate-500 mt-1">Acompanhe o MRR e a distribuição de planos dos seus clientes.</p>
         </div>
       </div>
@@ -181,11 +181,11 @@ export function AgencyFinanceDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontFamily: 'Inter, sans-serif' }} dy={10} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 12, fill: '#64748b' }} 
+                    tick={{ fontSize: 12, fill: '#64748b', fontFamily: 'Inter, sans-serif' }} 
                     tickFormatter={(value) => `R$${value}`}
                     width={60}
                   />

@@ -112,8 +112,8 @@ export default function DiaryDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight flex items-center gap-3">
-            <BrainCircuit className="h-8 w-8 text-[#76A34A]" /> Diário do Paciente
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green flex items-center gap-3 pb-1">
+            <BrainCircuit className="h-9 w-9 text-creative-green shrink-0" /> Diário do Paciente
           </h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1">
             Análise e leitura das reflexões compartilhadas de forma integrada.
@@ -444,7 +444,13 @@ export default function DiaryDashboard() {
                       const isPositive = msg.sentiment_score > 0.3;
                       
                       return (
-                      <div key={msg.id} className="flex items-end gap-2 justify-end mb-4">
+                      <motion.div 
+                        key={msg.id} 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 22 }}
+                        className="flex items-end gap-2 justify-end mb-4 origin-bottom-right"
+                      >
                         <div className={`relative max-w-[75%] p-3 px-4 rounded-2xl rounded-br-none shadow-sm flex flex-col ${isCrisis ? 'bg-red-50 text-red-900 border border-red-100' : isPositive ? 'bg-emerald-50 border border-emerald-100 text-emerald-900' : 'bg-white border border-slate-200'}`}>
                           <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                           <div className={`flex items-center self-end gap-1.5 text-[10px] mt-1 ${isCrisis ? 'text-red-500' : 'text-slate-400'}`}>
@@ -456,7 +462,7 @@ export default function DiaryDashboard() {
                             ) : null}
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                       );
                     })}
                     <div ref={chatBottomRef} />

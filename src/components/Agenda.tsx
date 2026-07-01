@@ -456,7 +456,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
       {/* Header Block */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Agenda</h1>
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">Agenda</h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1">Gerencie seus agendamentos e compromissos clínicos.</p>
         </div>
       </div>

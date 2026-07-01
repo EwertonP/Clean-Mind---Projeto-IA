@@ -157,7 +157,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
       {/* Title */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Financeiro</h1>
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">Financeiro</h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1 max-w-lg">
             Gestão de receitas, faturamento automatizado e controle de despesas.
           </p>
@@ -212,14 +212,14 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
               <Landmark className="h-4 w-4 text-brand-primary" />
               <span>Receita Recebida</span>
             </span>
-            <span className="text-3xl font-serif text-brand-primary font-bold block pt-2">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-3xl font-sans text-brand-primary font-bold block pt-2">R$ {totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1">
             <span className="text-xs font-mono text-slate-400 uppercase tracking-wide block font-semibold flex items-center space-x-2">
               <Clock className="h-4 w-4 text-amber-500" />
               <span>Saldo Pendente</span>
             </span>
-            <span className="text-3xl font-serif text-brand-primary font-bold block pt-2">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-3xl font-sans text-brand-primary font-bold block pt-2">R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
 
@@ -240,8 +240,8 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barGap={2} barSize={24}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontFamily: 'Inter, sans-serif' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontFamily: 'Inter, sans-serif' }} tickFormatter={(val) => `R$${val/1000}k`} />
                   <RechartsTooltip
                     cursor={{ fill: '#f8fafc' }}
                     content={({ active, payload, label }) => {
@@ -434,7 +434,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
       {/* Invoice Table History */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h3 className="font-serif text-brand-primary font-bold text-base">Histórico de Transações e Liquidação</h3>
+          <h3 className="font-sans text-brand-primary font-bold text-base">Histórico de Transações e Liquidação</h3>
           
           {/* Filters */}
           <div className="flex flex-col sm:flex-row items-center gap-3">

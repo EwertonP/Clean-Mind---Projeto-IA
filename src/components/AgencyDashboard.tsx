@@ -125,7 +125,7 @@ export default function AgencyDashboard() {
              <ShieldCheck className="w-5 h-5" />
              <span className="text-[13px] font-bold tracking-wider text-brand-primary uppercase">Master Admin</span>
            </div>
-           <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">CleanMind Hub</h1>
+           <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">CleanMind Hub</h1>
            <p className="text-[15px] font-medium text-slate-500 mt-1">Visão global de todos os clientes e clínicas a utilizar o CleanMind.</p>
         </div>
       </div>

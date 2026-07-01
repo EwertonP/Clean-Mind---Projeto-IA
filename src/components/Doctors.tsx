@@ -152,7 +152,7 @@ export default function Doctors({}: DoctorsProps) {
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Médicos da Clínica</h1>
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">Médicos da Clínica</h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1">Gerencie o corpo clínico da sua instituição.</p>
         </div>
         <div className="flex items-center space-x-4">
@@ -383,7 +383,7 @@ export default function Doctors({}: DoctorsProps) {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-sm font-semibold text-[#86EFAC] bg-status-success/20 px-3 py-1.5 rounded-lg border border-status-success/30 hover:bg-status-success/40 transition-colors"
+                      className="text-sm font-semibold text-brand-primary bg-status-success/20 px-3 py-1.5 rounded-lg border border-status-success/30 hover:bg-status-success/40 transition-colors"
                     >
                       Escolher Foto
                     </button>
@@ -395,7 +395,7 @@ export default function Doctors({}: DoctorsProps) {
                   <label className="block text-sm font-semibold text-slate-900 mb-1.5">Nome Completo *</label>
                   <input
                     type="text" required value={name} onChange={e => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                     placeholder="Ex: Dr. João da Silva"
                   />
                 </div>
@@ -405,7 +405,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">Email *</label>
                     <input
                       type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="joao@clinica.com"
                     />
                   </div>
@@ -413,7 +413,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">Telefone/WhatsApp</label>
                     <input
                       type="text" value={phone} onChange={e => setPhone(maskPhone(e.target.value))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="(11) 90000-0000"
                     />
                   </div>
@@ -421,7 +421,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">Especialidade</label>
                     <input
                       type="text" value={specialty} onChange={e => setSpecialty(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="Ex: Psiquiatria"
                     />
                   </div>
@@ -429,7 +429,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">Valor da Consulta (R$)</label>
                     <input
                       type="number" step="0.01" value={consultationPrice} onChange={e => setConsultationPrice(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="Ex: 350.00"
                     />
                   </div>
@@ -437,7 +437,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">CPF *</label>
                     <input
                       type="text" required value={cpf} onChange={e => setCpf(maskCPF(e.target.value))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="000.000.000-00"
                     />
                   </div>
@@ -445,7 +445,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">CRM/CRP *</label>
                     <input
                       type="text" required value={crp_crm} onChange={e => setCrpCrm(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="CRM-SP 123456"
                     />
                   </div>
@@ -453,7 +453,7 @@ export default function Doctors({}: DoctorsProps) {
                     <label className="block text-sm font-semibold text-slate-900 mb-1.5">RQE</label>
                     <input
                       type="text" value={rqe} onChange={e => setRqe(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#86EFAC] focus:ring-1 focus:ring-[#86EFAC]"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
                       placeholder="RQE 12345"
                     />
                   </div>
@@ -515,7 +515,7 @@ export default function Doctors({}: DoctorsProps) {
               <button
                 type="submit"
                 form="doctor-form"
-                className="py-2.5 px-4 text-sm font-semibold text-white bg-[#86EFAC] hover:bg-[#6EE7B7] rounded-xl transition-colors border border-transparent cursor-pointer shadow-sm"
+                className="py-2.5 px-4 text-sm font-semibold text-status-success bg-brand-primary hover:bg-slate-800 rounded-xl transition-colors border border-transparent cursor-pointer shadow-sm"
               >
                 {isEditing ? 'Salvar Alterações' : 'Cadastrar Médico'}
               </button>

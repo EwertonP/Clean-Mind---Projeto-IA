@@ -367,7 +367,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
       {/* Header Select Patient */}
       <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
         <div className="flex-1">
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight">Evolução Clínica e Prontuários</h1>
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green pb-1">Evolução Clínica e Prontuários</h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1">
             Evolução de pacientes no padrão ICP-Brasil integrado a insights diários por inteligência artificial.
           </p>

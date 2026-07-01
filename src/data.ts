@@ -98,6 +98,7 @@ export interface DiaryEntry {
   patient_id: string;
   doctor_id: string;
   content: string;
+  audio_url?: string; // Can be a base64 string or an actual URL
   sentiment_score: number; // -1.00 to 1.00
   crisis_flag: boolean;
   created_at: string;
@@ -421,7 +422,7 @@ export const dataManager = {
     persistToFirestore('diary', id, list[idx]);
     return list[idx];
   },
-  addDiaryEntry: (patient_id: string, content: string, explicit_doctor_id?: string): DiaryEntry => {
+  addDiaryEntry: (patient_id: string, content: string, explicit_doctor_id?: string, audio_url?: string): DiaryEntry => {
     const list = dataManager.getDiaryEntries();
     
     // Quick heuristic analyzer simulating AWS/OpenAI/Gemini clinical mood triage
@@ -462,6 +463,7 @@ export const dataManager = {
       patient_id,
       doctor_id: explicit_doctor_id || patient?.doctor_id || dataManager.getDoctor().id,
       content,
+      audio_url,
       sentiment_score: parseFloat(score.toFixed(2)),
       crisis_flag: isCrisis,
       created_at: new Date().toISOString()

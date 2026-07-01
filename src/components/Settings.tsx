@@ -226,8 +226,8 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
     <div className="space-y-6 max-w-5xl mx-auto w-full">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-            <Settings2 className="h-7 w-7 text-slate-800" />
+          <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green flex items-center gap-3 pb-1">
+            <Settings2 className="h-8 w-8 text-creative-green shrink-0" />
             <span>Configurações</span>
           </h1>
           <p className="text-[15px] font-medium text-slate-500 mt-1">Gerencie as informações da clínica e integrações de ferramentas.</p>

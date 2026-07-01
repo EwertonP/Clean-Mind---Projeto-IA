@@ -33,8 +33,8 @@ export default function AlertCenter({ onNavigate }: AlertCenterProps) {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="flex items-center space-x-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-              <AlertCircle className="h-6 w-6 text-red-500" />
+            <h1 className="text-4xl sm:text-5xl font-monique font-normal text-creative-green flex items-center gap-3 pb-1">
+              <AlertCircle className="h-8 w-8 text-red-500 shrink-0" />
               <span>Central de Alertas Clínicos</span>
             </h1>
             <p className="text-sm text-slate-500 mt-1">

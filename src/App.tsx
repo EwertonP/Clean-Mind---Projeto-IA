@@ -244,7 +244,7 @@ export default function App() {
               <div className="w-8 h-8 rounded-lg bg-[#C1E2A4] flex items-center justify-center text-[#192F28]">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">CleanMind Hub</h1>
+              <h1 className="text-[28px] font-monique font-normal text-creative-green">CleanMind Hub</h1>
               
               <button 
                 className="md:hidden absolute right-4 top-6 p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
@@ -331,7 +331,7 @@ export default function App() {
                   transition={{ duration: 0.2 }}
                   className="min-w-0 flex-1 truncate"
                 >
-                   <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-800 truncate">
+                   <h2 className="text-3xl sm:text-4xl font-monique font-normal text-creative-green truncate pb-1">
                      {agencyTab === 'clinics' ? 'Gerenciamento de Clínicas' : 'Painel Financeiro'}
                    </h2>
                 </motion.div>
@@ -356,7 +356,7 @@ export default function App() {
               <div className="w-10 h-10 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-sm">
                 C
               </div>
-              <h1 className="text-xl md:text-2xl font-serif font-bold tracking-tight text-slate-900">cleanmind.</h1>
+              <h1 className="text-[32px] font-monique font-normal text-creative-green">cleanmind.</h1>
             </div>
             <button
               onClick={handleLogout}
@@ -413,7 +413,7 @@ export default function App() {
                   <path d="M3 21L15 9" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">CleanMind</h1>
+              <h1 className="text-[28px] font-monique font-normal text-creative-green">CleanMind</h1>
             </div>
             
             <button 
