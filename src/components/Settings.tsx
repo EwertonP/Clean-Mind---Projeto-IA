@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2 } from 'lucide-react';
+import { Building2, Settings2, Link as LinkIcon, Mail, Calendar, MessageSquare, MapPin, Building, CalendarIcon as CalendarDays, Phone, Globe, UploadCloud, Trash2, ShieldCheck, Terminal, RefreshCw, AlertCircle, CheckCircle2, ShieldAlert, Check, Key } from 'lucide-react';
 import { connectGoogleCalendar, isGoogleCalendarConnected, disconnectGoogleCalendar } from '../googleCalendar';
 import { dataManager, compressImage } from '../data';
 import { useStore } from '../store';
@@ -19,9 +19,40 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
   const doc = doctorsStore.find(d => d.id === sessionId) || dataManager.getDoctor();
   
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'integrations' | 'whatsapp'>('profile');
-  const [googleConnected, setGoogleConnected] = useState(isGoogleCalendarConnected());
+  const [googleConnected, setGoogleConnected] = useState(isGoogleCalendarConnected(doc));
   const [isEditing, setIsEditing] = useState(doc?.is_configured === false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [diagnosticsData, setDiagnosticsData] = useState<any | null>(null);
+  const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
+
+  const handleTestGoogleToken = async () => {
+    setDiagnosticsLoading(true);
+    setDiagnosticsError(null);
+    try {
+      const response = await fetch('/api/auth/google/test-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doctorId: doc?.id })
+      });
+      if (!response.ok) {
+        throw new Error('Erro ao se conectar com o servidor para realizar o teste.');
+      }
+      const data = await response.json();
+      setDiagnosticsData(data);
+    } catch (err: any) {
+      console.error(err);
+      setDiagnosticsError(err.message || 'Erro inesperado.');
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
+  // Keep googleConnected in sync with Firestore doc
+  useEffect(() => {
+    setGoogleConnected(isGoogleCalendarConnected(doc));
+  }, [doc]);
 
   // Clinic profile state
   const [profileData, setProfileData] = useState(() => {
@@ -205,7 +236,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
 
   const handleConnectGoogle = async () => {
     try {
-      const result = await connectGoogleCalendar();
+      const result = await connectGoogleCalendar(doc?.id);
       if (result) {
         setGoogleConnected(true);
       }
@@ -218,7 +249,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
   };
 
   const handleDisconnectGoogle = () => {
-    disconnectGoogleCalendar();
+    disconnectGoogleCalendar(doc?.id);
     setGoogleConnected(false);
   };
 
@@ -313,7 +344,7 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                           <Building className="w-3 h-3" />
                           <span>{profileData.specialty}</span>
                         </span>
-                        <span className="inline-flex items-center space-x-1 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-semibold border border-emerald-100">
+                        <span className="inline-flex items-center space-x-1 bg-status-success/20 text-brand-primary px-3 py-1 rounded-full text-xs font-semibold border border-status-success/50">
                           <MessageSquare className="w-3 h-3" />
                           <span>{profileData.patients} Pacientes</span>
                         </span>
@@ -586,6 +617,9 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Gmail</h3>
                   <p className="text-sm text-slate-500">Envio automático de emails de confirmação de consultas e cobranças diretamente pelo seu e-mail.</p>
+                  {googleConnected && doc?.google_connected_email && (
+                    <p className="text-xs text-brand-primary font-semibold mt-1">Conectado como: {doc.google_connected_email}</p>
+                  )}
                 </div>
               </div>
               <div>
@@ -607,12 +641,15 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between">
               <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-status-success/20 flex items-center justify-center shrink-0">
                   <Calendar className="w-6 h-6 text-brand-primary" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Google Calendar (Exportação)</h3>
                   <p className="text-sm text-slate-500">Sincronize a agenda exportando automaticamente as sessões do CleanMind para o seu Google Calendar.</p>
+                  {googleConnected && doc?.google_connected_email && (
+                    <p className="text-xs text-brand-primary font-semibold mt-1">Conectado como: {doc.google_connected_email}</p>
+                  )}
                 </div>
               </div>
               <div>
@@ -638,6 +675,156 @@ export default function Settings({ onRefreshDashboard }: { onRefreshDashboard?: 
                     </button>
                  )}
               </div>
+            </div>
+
+            {/* Diagnostic/Monitoring Panel for Google Calendar Storage & Integration */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 border border-indigo-100 mt-0.5">
+                    <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-[16px] font-bold text-slate-950 flex items-center gap-2">
+                      Painel de Diagnóstico & Segurança (Google Integration)
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-xl">
+                      Monitore o status do armazenamento criptografado no Firestore, decifragem AES-256-GCM e validade física do token com as APIs do Google.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={diagnosticsLoading}
+                  onClick={handleTestGoogleToken}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg text-xs font-semibold transition flex items-center space-x-2 shrink-0 cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${diagnosticsLoading ? 'animate-spin' : ''}`} />
+                  <span>{diagnosticsLoading ? 'Testando...' : 'Testar Conexão e Integridade'}</span>
+                </button>
+              </div>
+
+              {diagnosticsError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center space-x-2.5 text-xs text-red-700">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <span>{diagnosticsError}</span>
+                </div>
+              )}
+
+              {diagnosticsData && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="border border-slate-200 rounded-xl bg-white overflow-hidden text-xs"
+                >
+                  {/* Summary row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 border-b border-slate-100 bg-slate-50/50">
+                    <div className="p-4 flex items-center space-x-3">
+                      <div className="shrink-0">
+                        {diagnosticsData.success && diagnosticsData.decryptionSuccess ? (
+                          <div className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-800">Status no Firestore</div>
+                        <div className="text-[11px] text-slate-500">
+                          {diagnosticsData.rawAccessTokenLength > 0 ? (
+                            <span className="text-emerald-600 font-medium">Tokens salvos ({diagnosticsData.rawAccessTokenLength}B)</span>
+                          ) : (
+                            <span className="text-slate-500">Nenhum token gravado</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 flex items-center space-x-3">
+                      <div className="shrink-0">
+                        {diagnosticsData.isEncrypted ? (
+                          <div className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
+                            <Key className="w-3.5 h-3.5 text-slate-500" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-800">Criptografia de Dados</div>
+                        <div className="text-[11px] text-slate-500">
+                          {diagnosticsData.isEncrypted ? (
+                            <span className="text-indigo-600 font-medium">AES-256-GCM Ativo</span>
+                          ) : (
+                            <span>Não criptografado (Sandbox)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 flex items-center space-x-3">
+                      <div className="shrink-0">
+                        {diagnosticsData.tokenValidNow ? (
+                          <div className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-800">Validade da Google API</div>
+                        <div className="text-[11px] font-medium text-slate-600">
+                          {diagnosticsData.googleApiStatus}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Data */}
+                  <div className="p-4 space-y-3 bg-slate-50/20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                      <div className="space-y-1">
+                        <span className="text-slate-400 block font-medium">Email Conectado</span>
+                        <span className="font-semibold text-slate-800">{diagnosticsData.email || 'Nenhum'}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-slate-400 block font-medium">Data de Expiração Local</span>
+                        <span className="font-semibold text-slate-800">
+                          {diagnosticsData.tokenExpiryFormatted || 'Não aplicável'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Console / Log Terminal */}
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex items-center space-x-1.5 text-slate-500 font-medium">
+                        <Terminal className="w-3.5 h-3.5" />
+                        <span>Log de Rastreamento (Servidor)</span>
+                      </div>
+                      <div className="bg-slate-900 text-slate-300 font-mono text-[10px] p-3 rounded-lg space-y-1 overflow-x-auto max-h-48 border border-slate-950">
+                        {diagnosticsData.log && diagnosticsData.log.length > 0 ? (
+                          diagnosticsData.log.map((logLine: string, index: number) => (
+                            <div key={index} className="flex items-start space-x-1">
+                              <span className="text-slate-500 select-none">[{index + 1}]</span>
+                              <span>{logLine}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-slate-500 italic">Nenhum log gerado.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between">

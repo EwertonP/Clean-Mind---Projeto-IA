@@ -200,7 +200,7 @@ export default function DiaryDashboard() {
               </button>
               <button 
                 onClick={() => setFilter('positive')}
-                className={`px-4 py-1.5 text-[13px] font-semibold rounded-lg whitespace-nowrap transition-colors ${filter === 'positive' ? 'bg-status-success text-white' : 'text-slate-500 hover:text-brand-primary hover:bg-emerald-50'}`}
+                className={`px-4 py-1.5 text-[13px] font-semibold rounded-lg whitespace-nowrap transition-colors ${filter === 'positive' ? 'bg-status-success text-brand-primary' : 'text-slate-500 hover:text-brand-primary hover:bg-status-success/20'}`}
               >
                 Melhoras
               </button>
@@ -219,7 +219,12 @@ export default function DiaryDashboard() {
                 <p className="text-slate-500 text-sm max-w-sm mx-auto">Nenhum registro encontrado para a busca ou filtro atual.</p>
               </motion.div>
             ) : (
-              <div className="space-y-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
                 {filteredEntries.map(entry => {
                   const patient = patientsStore.find(p => p.id === entry.patient_id);
                   const isPositive = entry.sentiment_score > 0.3;
@@ -235,7 +240,7 @@ export default function DiaryDashboard() {
                         <div className="absolute top-0 left-0 w-1.5 h-full bg-red-400"></div>
                       )}
                       {!entry.crisis_flag && isPositive && (
-                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-400"></div>
+                        <div className="absolute top-0 left-0 w-1 h-full bg-status-success"></div>
                       )}
                       
                       <div className="flex justify-between items-start mb-3">
@@ -262,7 +267,7 @@ export default function DiaryDashboard() {
                             </span>
                           )}
                           <div className={`px-2.5 py-1 rounded border text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${
-                            isPositive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
+                            isPositive ? 'bg-status-success/20 border-status-success/40 text-brand-primary' : 
                             entry.sentiment_score < -0.3 ? 'bg-amber-50 border-amber-200 text-amber-700' : 
                             'bg-slate-50 border-slate-200 text-slate-600'
                           }`}>
@@ -275,7 +280,7 @@ export default function DiaryDashboard() {
                         <p className="text-slate-700 text-[15px] leading-relaxed whitespace-pre-wrap">{entry.content}</p>
                         
                         <div className="mt-4 pt-3 border-t border-slate-50 flex justify-end">
-                          <button className="text-[13px] font-bold text-brand-primary hover:text-emerald-800 flex items-center gap-1 transition-colors group">
+                          <button className="text-[13px] font-bold text-brand-primary hover:text-brand-primary/80 flex items-center gap-1 transition-colors group">
                             Ver Histórico do Paciente <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                           </button>
                         </div>
@@ -283,7 +288,7 @@ export default function DiaryDashboard() {
                     </motion.div>
                   )
                 })}
-              </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -451,14 +456,14 @@ export default function DiaryDashboard() {
                         transition={{ type: "spring", stiffness: 350, damping: 22 }}
                         className="flex items-end gap-2 justify-end mb-4 origin-bottom-right"
                       >
-                        <div className={`relative max-w-[75%] p-3 px-4 rounded-2xl rounded-br-none shadow-sm flex flex-col ${isCrisis ? 'bg-red-50 text-red-900 border border-red-100' : isPositive ? 'bg-emerald-50 border border-emerald-100 text-emerald-900' : 'bg-white border border-slate-200'}`}>
+                        <div className={`relative max-w-[75%] p-3 px-4 rounded-2xl rounded-br-none shadow-sm flex flex-col ${isCrisis ? 'bg-red-50 text-red-900 border border-red-100' : isPositive ? 'bg-status-success/20 border border-status-success/40 text-slate-900' : 'bg-white border border-slate-200'}`}>
                           <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                           <div className={`flex items-center self-end gap-1.5 text-[10px] mt-1 ${isCrisis ? 'text-red-500' : 'text-slate-400'}`}>
                             {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             {isCrisis ? (
                               <span className="bg-red-500 text-white px-1 rounded uppercase tracking-wider text-[8px] font-bold">Alerta</span>
                             ) : isPositive ? (
-                              <span className="bg-status-success text-white px-1 rounded uppercase tracking-wider text-[8px] font-bold">Melhora</span>
+                              <span className="bg-status-success text-brand-primary px-1 rounded uppercase tracking-wider text-[8px] font-bold">Melhora</span>
                             ) : null}
                           </div>
                         </div>

@@ -137,7 +137,7 @@ export default function AgencyDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-emerald-100 text-brand-primary rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-status-success/20 text-brand-primary rounded-xl flex items-center justify-center">
                   <Building2 className="w-6 h-6" />
                 </div>
               </div>
@@ -331,15 +331,15 @@ export default function AgencyDashboard() {
                   </form>
                 ) : (
                   <div className="space-y-4 animate-fade-in">
-                    <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl border border-emerald-100">
+                    <div className="bg-status-success/10 text-brand-primary p-4 rounded-xl border border-brand-primary/20">
                       <p className="text-sm font-medium mb-2">Link gerado com sucesso!</p>
                       <div className="flex items-center space-x-2">
-                        <div className="bg-white px-3 py-2 border border-emerald-200 rounded-lg text-xs font-mono flex-1 overflow-x-auto whitespace-nowrap text-emerald-900">
+                        <div className="bg-white px-3 py-2 border border-brand-primary/25 rounded-lg text-xs font-mono flex-1 overflow-x-auto whitespace-nowrap text-brand-primary">
                           {generatedLink}
                         </div>
                         <button 
                           onClick={() => { navigator.clipboard.writeText(generatedLink); alert("Link copiado!"); }}
-                          className="p-2 bg-brand-primary text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                          className="p-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary/80 transition-colors"
                           title="Copiar Link"
                         >
                           <Copy className="w-4 h-4" />

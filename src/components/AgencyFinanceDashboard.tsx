@@ -118,7 +118,7 @@ export function AgencyFinanceDashboard() {
 
       {/* Top Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden text-white" style={{backgroundColor: '#192F28'}}>
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden text-white" style={{backgroundColor: '#114F3E'}}>
           <div className="absolute top-0 right-0 p-6 opacity-10">
             <TrendingUp className="w-24 h-24" />
           </div>
@@ -133,13 +133,13 @@ export function AgencyFinanceDashboard() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-          <div className="w-10 h-10 bg-emerald-50 text-brand-primary rounded-xl flex items-center justify-center mb-4">
+          <div className="w-10 h-10 bg-status-success/20 text-brand-primary rounded-xl flex items-center justify-center mb-4">
             <CreditCard className="w-5 h-5" />
           </div>
           <h3 className="text-slate-500 text-sm font-medium">Assinantes Pagantes</h3>
           <div className="mt-1 flex items-baseline">
             <p className="text-[32px] font-bold text-slate-900 leading-none">{activePaidSubscribers}</p>
-            <span className="ml-2 text-xs font-bold text-brand-primary bg-emerald-50 px-2 py-1 rounded-md">
+            <span className="ml-2 text-xs font-bold text-brand-primary bg-status-success/20 px-2 py-1 rounded-md">
               {Math.round((activePaidSubscribers / Math.max(1, clinics.length)) * 100)}% de conversão
             </span>
           </div>
@@ -165,7 +165,7 @@ export function AgencyFinanceDashboard() {
                 <h3 className="text-lg font-bold text-slate-900">Evolução do MRR</h3>
                 <p className="text-sm text-slate-500">Crescimento da receita nos últimos 6 meses</p>
               </div>
-              <div className="flex items-center space-x-2 text-sm font-medium text-brand-primary bg-emerald-50 px-3 py-1 rounded-lg">
+              <div className="flex items-center space-x-2 text-sm font-medium text-brand-primary bg-status-success/20 px-3 py-1 rounded-lg">
                 <ArrowUpRight className="w-4 h-4" />
                 <span>+12.5%</span>
               </div>
@@ -176,8 +176,8 @@ export function AgencyFinanceDashboard() {
                 <AreaChart data={mrrData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#192F28" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#192F28" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#114F3E" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#114F3E" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -193,7 +193,7 @@ export function AgencyFinanceDashboard() {
                     formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'MRR']}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Area type="monotone" dataKey="mrr" stroke="#192F28" strokeWidth={3} fillOpacity={1} fill="url(#colorMrr)" />
+                  <Area type="monotone" dataKey="mrr" stroke="#114F3E" strokeWidth={3} fillOpacity={1} fill="url(#colorMrr)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -291,33 +291,33 @@ export function AgencyFinanceDashboard() {
                 </div>
               </div>
               
-              <div className="flex items-center justify-between p-3 border border-emerald-50 bg-emerald-50/50 rounded-xl">
+              <div className="flex items-center justify-between p-3 border border-status-success/20 bg-status-success/10 rounded-xl">
                 <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+                  <div className="w-3 h-3 rounded-full bg-status-success"></div>
                   <div>
-                    <p className="text-sm font-bold text-emerald-900">Pro</p>
-                    <p className="text-xs text-emerald-700/70">Intermediário</p>
+                    <p className="text-sm font-bold text-brand-primary">Pro</p>
+                    <p className="text-xs text-brand-primary/70">Intermediário</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-emerald-900">{planStats.pro}</p>
-                  <p className="text-xs text-emerald-700/70">
+                  <p className="text-sm font-bold text-brand-primary">{planStats.pro}</p>
+                  <p className="text-xs text-brand-primary/70">
                     {Math.round((planStats.pro / Math.max(1, clinics.length)) * 100)}%
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 border border-emerald-50 bg-emerald-50/50 rounded-xl">
+              <div className="flex items-center justify-between p-3 border border-status-success/20 bg-status-success/10 rounded-xl">
                 <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+                  <div className="w-3 h-3 rounded-full bg-status-success"></div>
                   <div>
-                    <p className="text-sm font-bold text-emerald-900">Premium</p>
-                    <p className="text-xs text-emerald-700/70">Pacote Completo</p>
+                    <p className="text-sm font-bold text-brand-primary">Premium</p>
+                    <p className="text-xs text-brand-primary/70">Pacote Completo</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-emerald-900">{planStats.premium}</p>
-                  <p className="text-xs text-emerald-700/70">
+                  <p className="text-sm font-bold text-brand-primary">{planStats.premium}</p>
+                  <p className="text-xs text-brand-primary/70">
                     {Math.round((planStats.premium / Math.max(1, clinics.length)) * 100)}%
                   </p>
                 </div>

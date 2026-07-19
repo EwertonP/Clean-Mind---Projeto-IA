@@ -290,8 +290,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                       cursor={{ fill: '#f8fafc' }}
                     />
                     <Bar dataKey="Despesas" fill="#A3B1A6" stackId="a" />
-                    <Bar dataKey="A receber" fill="#192F28" stackId="a" />
-                    <Bar dataKey="Receita" fill="#C1E2A4" stackId="a" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="A receber" fill="#114F3E" stackId="a" />
+                    <Bar dataKey="Receita" fill="#C7F150" stackId="a" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -320,8 +320,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         cursor={{ fill: 'transparent' }}
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                       />
-                      <Bar dataKey="Online" stackId="a" fill="#C1E2A4" radius={[0, 0, 4, 4]} barSize={40} />
-                      <Bar dataKey="Presencial" stackId="a" fill="#192F28" radius={[4, 4, 0, 0]} barSize={40} />
+                      <Bar dataKey="Online" stackId="a" fill="#C7F150" radius={[0, 0, 4, 4]} barSize={40} />
+                      <Bar dataKey="Presencial" stackId="a" fill="#114F3E" radius={[4, 4, 0, 0]} barSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                   {sessionsData.every(s => s.Online === 0 && s.Presencial === 0) && (

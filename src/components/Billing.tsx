@@ -264,7 +264,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                       return null;
                     }}
                   />
-                  <Bar dataKey="Recebido" fill="#192F28" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Recebido" fill="#114F3E" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Pendente" fill="#fbbf24" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -281,7 +281,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
       {/* Modal / Overlay Form */}
       <AnimatePresence>
       {showForm && (
-        <div className="fixed inset-0 z-50">
+        <motion.div className="fixed inset-0 z-50">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -392,7 +392,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                 </div>
               </div>
 
-              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 space-y-4">
+              <div className="bg-status-success/10 border border-brand-primary/20 rounded-xl p-5 space-y-4">
                 <label className="flex items-start space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -427,7 +427,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
             </div>
           </form>
           </motion.div>
-        </div>
+        </motion.div>
       )}
       </AnimatePresence>
 
@@ -513,7 +513,7 @@ export default function Billing({ initialDraft, onClearDraft }: BillingProps) {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${bill.status === 'paid' ? 'bg-emerald-50 text-brand-primary' : 'bg-rose-50 text-rose-600'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${bill.status === 'paid' ? 'bg-status-success/20 text-brand-primary' : 'bg-rose-50 text-rose-600'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${bill.status === 'paid' ? 'bg-status-success' : 'bg-rose-500 animate-pulse'}`}></span>
                         {bill.status === 'paid' ? 'Liquidado' : 'Pendente'}
                       </span>

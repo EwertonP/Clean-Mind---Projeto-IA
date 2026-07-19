@@ -115,9 +115,9 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     
     // Check Google Calendar API conflicts
     const tokenForCheck = docForCheck?.google_access_token;
-    if (tokenForCheck || isGoogleCalendarConnected()) {
+    if (tokenForCheck || isGoogleCalendarConnected(docForCheck)) {
       const editingApp = editingAppointmentId ? dataManager.getAppointments().find(a => a.id === editingAppointmentId) : undefined;
-      const isAvailable = await checkGoogleCalendarAvailability(startDateTime, endDateTime, tokenForCheck, editingApp?.google_event_id);
+      const isAvailable = await checkGoogleCalendarAvailability(startDateTime, endDateTime, tokenForCheck, editingApp?.google_event_id, docForCheck?.id);
       
       if (!isAvailable) {
         setToastMessage(`Conflito: Este horário já está ocupado no Google Calendar do médico.`);
@@ -172,7 +172,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     const doc = doctorsStore.find(d => d.id === appDoctorId) || dataManager.getDoctors().find(d => d.id === appDoctorId) || dataManager.getDoctor();
     const doctorToken = doc?.google_access_token;
     
-    if (isGoogleCalendarConnected() || doctorToken) {
+    if (isGoogleCalendarConnected(doc) || doctorToken) {
       const doctorName = doc?.name?.trim() ? doc.name : 'Médico';
       const actualRoom = newApp.type === 'presencial' ? newApp.room : undefined;
       const pat = patients.find(p => p.id === selectedPatientId);
@@ -246,8 +246,8 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     const doc = doctorsStore.find(d => d.id === appToDel?.doctor_id);
     const doctorToken = doc?.google_access_token;
     
-    if (appToDel?.google_event_id && (isGoogleCalendarConnected() || doctorToken)) {
-      await deleteGoogleCalendarEvent(appToDel.google_event_id, doctorToken);
+    if (appToDel?.google_event_id && (isGoogleCalendarConnected(doc) || doctorToken)) {
+      await deleteGoogleCalendarEvent(appToDel.google_event_id, doctorToken, appToDel.doctor_id);
     }
     
     setToastMessage('Agendamento excluído com sucesso');
@@ -411,7 +411,7 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
     setCurrentDate(new Date());
   };
 
-  const colors = ['bg-status-success', 'bg-emerald-200', 'bg-orange-200', 'bg-emerald-200', 'bg-pink-200'];
+  const colors = ['bg-status-success', 'bg-amber-100', 'bg-orange-100', 'bg-slate-100', 'bg-pink-100'];
   const getAppointmentsForSlot = (isoDate: string, time: string) => {
     const slotHour = parseInt(time.split(':')[0], 10);
     return appointments.filter(app => {
@@ -649,16 +649,16 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
               </div>
 
               {/* Sync Banner */}
-              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 space-y-4">
+              <div className="bg-status-success/10 border border-status-success/30 rounded-xl p-5 space-y-4">
                 <div className="flex items-start space-x-3">
                   <Sparkles className="h-5 w-5 text-status-success shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-emerald-900 font-bold text-sm">Sincronização Inteligente de Horários</h4>
-                    <p className="text-emerald-700/80 text-xs mt-0.5">O cleanmind verifica automaticamente conflitos, sugere horários disponíveis e exporta para o seu Google Calendar.</p>
+                    <h4 className="text-brand-primary font-bold text-sm">Sincronização Inteligente de Horários</h4>
+                    <p className="text-brand-primary/80 text-xs mt-0.5">O cleanmind verifica automaticamente conflitos, sugere horários disponíveis e exporta para o seu Google Calendar.</p>
                   </div>
                 </div>
                 
-                <div className="space-y-3 bg-white rounded-lg p-4 border border-emerald-100">
+                <div className="space-y-3 bg-white rounded-lg p-4 border border-status-success/20">
                   <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center space-x-3">
                       <MessageSquare className="h-4 w-4 text-brand-primary/70" />
@@ -735,9 +735,16 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
       )}
       </AnimatePresence>
 
-      {/* Main Calendar View Container */}
-      {activeSubTab === 'calendario' && (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 max-w-[1200px] mx-auto">
+      <AnimatePresence mode="wait">
+        {activeSubTab === 'calendario' && (
+          <motion.div
+            key="calendario"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 max-w-[1200px] mx-auto">
         
         {/* Top Header - Similar to the referenced design */}
         <div className="p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -936,10 +943,18 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
         </div>
 
       </div>
+          </motion.div>
       )}
 
       {activeSubTab === 'configuracoes' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+        <motion.div
+          key="configuracoes"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -15 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
           <div className="mb-6">
              <label className="block text-sm font-semibold text-slate-700 mb-2">Selecione o Médico</label>
              <select 
@@ -1010,7 +1025,9 @@ export default function Agenda({ onNavigate, initialOpenNewModal }: AgendaProps)
             </div>
           </div>
         </div>
+      </motion.div>
       )}
+      </AnimatePresence>
 
       {/* API Notice */}
       <div className="bg-white border border-slate-200 p-5 rounded-2xl text-xs font-mono text-slate-500 space-y-1.5 max-w-4xl shadow-sm">

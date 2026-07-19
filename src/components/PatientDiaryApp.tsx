@@ -717,10 +717,10 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                               const norm = tag.toLowerCase().trim();
                               let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
                               if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
-                              else if (norm.includes('acompanhamento')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                              else if (norm.includes('acompanhamento')) colorClass = 'bg-status-success/20 text-brand-primary border-status-success/40';
                               else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
                               else if (norm.includes('alta')) colorClass = 'bg-status-success/40 text-brand-primary border-status-success/50';
-                              else colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                              else colorClass = 'bg-status-success/20 text-brand-primary border-status-success/40';
                               
                               return (
                                 <span key={idx} className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${colorClass} tracking-wide whitespace-nowrap leading-none`}>
@@ -734,7 +734,7 @@ export default function PatientDiaryApp(props: PatientDiaryAppProps) {
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-brand-primary whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-status-success/20 text-brand-primary whitespace-nowrap">
                       {fakeData.diag || 'Avaliação Inicial'}
                     </span>
                   </td>

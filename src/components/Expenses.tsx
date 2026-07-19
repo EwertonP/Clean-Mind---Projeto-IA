@@ -85,7 +85,7 @@ export default function Expenses() {
 
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-5 py-2 text-[14px] font-bold rounded-lg border border-transparent bg-brand-primary hover:bg-emerald-700 text-white transition flex items-center shadow-md cursor-pointer h-10"
+          className="px-5 py-2 text-[14px] font-bold rounded-lg border border-transparent bg-brand-primary hover:bg-slate-800 text-white transition flex items-center shadow-md cursor-pointer h-10"
         >
           <Plus className="w-4 h-4 mr-2" /> Adicionar Despesa
         </button>
@@ -232,7 +232,7 @@ export default function Expenses() {
                     </td>
                     <td className="py-4 px-6">
                       {exp.status === 'paid' ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-brand-primary whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-status-success/20 text-brand-primary whitespace-nowrap">
                           <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-status-success"></span>
                           <span>Pago</span>
                         </span>
@@ -248,7 +248,7 @@ export default function Expenses() {
                         {exp.status === 'pending' && (
                           <button
                             onClick={() => handlePayExpense(exp.id)}
-                            className="text-xs text-brand-primary font-bold hover:text-emerald-800 cursor-pointer transition-colors"
+                            className="text-xs text-brand-primary font-bold hover:text-brand-primary/80 cursor-pointer transition-colors"
                           >
                             Pagar
                           </button>

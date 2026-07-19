@@ -49,48 +49,48 @@ export const useStore = create<AppState>((set) => ({
         onSnapshot(query(collection(db, 'patients'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.patients.filter(p => p && p.doctor_id !== dId);
-            return { patients: [...others, ...snapshot.docs.map(d => d.data() as Patient).filter(Boolean)] };
+            return { patients: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Patient)).filter(Boolean)] };
           });
           checkLoaded();
         }),
         onSnapshot(query(collection(db, 'appointments'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.appointments.filter(a => a && a.doctor_id !== dId);
-            return { appointments: [...others, ...snapshot.docs.map(d => d.data() as Appointment).filter(Boolean)] };
+            return { appointments: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment)).filter(Boolean)] };
           });
           checkLoaded();
         }),
         onSnapshot(query(collection(db, 'billing'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.billing.filter(b => b && b.doctor_id !== dId);
-            return { billing: [...others, ...snapshot.docs.map(d => d.data() as Billing).filter(Boolean)] };
+            return { billing: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Billing)).filter(Boolean)] };
           });
           checkLoaded();
         }),
         onSnapshot(query(collection(db, 'diary'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.diary.filter(d => d && d.doctor_id !== dId);
-            return { diary: [...others, ...snapshot.docs.map(d => d.data() as DiaryEntry).filter(Boolean)] };
+            return { diary: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as DiaryEntry)).filter(Boolean)] };
           });
           checkLoaded();
         }),
         onSnapshot(query(collection(db, 'medical_records'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.medicalRecords.filter(m => m && m.doctor_id !== dId);
-            return { medicalRecords: [...others, ...snapshot.docs.map(d => d.data() as MedicalRecord).filter(Boolean)] };
+            return { medicalRecords: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MedicalRecord)).filter(Boolean)] };
           });
           checkLoaded();
         }),
         onSnapshot(query(collection(db, 'assessments'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.assessments.filter(a => a && a.doctor_id !== dId);
-            return { assessments: [...others, ...snapshot.docs.map(d => d.data() as Assessment).filter(Boolean)] };
+            return { assessments: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Assessment)).filter(Boolean)] };
           });
         }),
         onSnapshot(query(collection(db, 'expenses'), where('doctor_id', '==', dId)), (snapshot) => {
           set(state => {
             const others = state.expenses.filter(e => e && e.doctor_id !== dId);
-            return { expenses: [...others, ...snapshot.docs.map(d => d.data() as Expense).filter(Boolean)] };
+            return { expenses: [...others, ...snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Expense)).filter(Boolean)] };
           });
         })
       ];

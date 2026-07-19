@@ -29,7 +29,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
     setAiAnalysis('');
     
     try {
-      const patientRecords = medicalRecords.filter(r => r.patient_id === patientId && r.signature_status === 'signed_icp');
+      const patientRecords = medicalRecordsStore.filter(r => r.patient_id === patientId && r.signature_status === 'signed_icp');
       const notes = patientRecords.map(r => r.evolution_text || r.prontuario_text).join('\n---\n');
       const assessmentHistory = assessments.map(a => `${a.type} em ${new Date(a.date).toLocaleDateString()}: Pontuação ${a.score} (${a.severity})`).join('\n');
       
@@ -253,9 +253,9 @@ export default function PatientAssessments({ patientId }: { patientId: string })
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white border-2 border-emerald-100 rounded-2xl p-8 shadow-sm">
+            <div className="bg-white border-2 border-brand-primary/20 rounded-2xl p-8 shadow-sm">
                <div className="flex items-center space-x-3 mb-6 pb-6 border-b border-slate-100">
-                 <div className="bg-emerald-100 p-2.5 rounded-xl">
+                 <div className="bg-status-success/20 p-2.5 rounded-xl">
                    <Brain className="w-6 h-6 text-brand-primary" />
                  </div>
                  <div>
@@ -278,7 +278,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <motion.div whileHover={{ y: -2 }} className="bg-white border text-center border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between" onClick={() => startSurvey('PHQ-9')}>
           <div>
-            <div className="w-12 h-12 bg-emerald-50 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-status-success/20 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <Activity className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-lg text-slate-800">PHQ-9</h3>
@@ -292,7 +292,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
 
         <motion.div whileHover={{ y: -2 }} className="bg-white border text-center border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between" onClick={() => startSurvey('GAD-7')}>
           <div>
-            <div className="w-12 h-12 bg-emerald-50 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-status-success/20 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <Activity className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-lg text-slate-800">GAD-7</h3>
@@ -341,7 +341,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                <BarChart3 className="w-5 h-5 text-status-success mr-2" />
                Evolução PHQ-9 (Depressão)
              </h3>
-             {phq9Data.length > 0 && <span className="font-mono bg-emerald-50 text-emerald-700 px-3 py-1 rounded-md text-sm font-bold">Último: {phq9Data[phq9Data.length-1].score}</span>}
+             {phq9Data.length > 0 && <span className="font-mono bg-status-success/20 text-brand-primary px-3 py-1 rounded-md text-sm font-bold">Último: {phq9Data[phq9Data.length-1].score}</span>}
           </div>
           
           <div className="h-[250px] w-full">
@@ -355,8 +355,8 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                 <AreaChart data={phq9Data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorPhq" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#76A34A" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#76A34A" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#114F3E" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#114F3E" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -367,7 +367,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                   />
                   <ReferenceLine y={9} stroke="#ef4444" strokeDasharray="3 3" opacity={0.3} />
                   <ReferenceLine y={4} stroke="#10b981" strokeDasharray="3 3" opacity={0.3} />
-                  <Area type="monotone" dataKey="score" stroke="#76A34A" strokeWidth={3} fillOpacity={1} fill="url(#colorPhq)" />
+                  <Area type="monotone" dataKey="score" stroke="#114F3E" strokeWidth={3} fillOpacity={1} fill="url(#colorPhq)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -381,7 +381,7 @@ export default function PatientAssessments({ patientId }: { patientId: string })
                <BarChart3 className="w-5 h-5 text-status-success mr-2" />
                Evolução GAD-7 (Ansiedade)
              </h3>
-             {gad7Data.length > 0 && <span className="font-mono bg-emerald-50 text-emerald-700 px-3 py-1 rounded-md text-sm font-bold">Último: {gad7Data[gad7Data.length-1].score}</span>}
+             {gad7Data.length > 0 && <span className="font-mono bg-status-success/20 text-brand-primary px-3 py-1 rounded-md text-sm font-bold">Último: {gad7Data[gad7Data.length-1].score}</span>}
           </div>
           
           <div className="h-[250px] w-full">

@@ -18,19 +18,51 @@
   font-display: swap;
 }
 
-@theme {
-  --color-brand-primary: #114F3E;
-  --color-brand-secondary: #FCAFC8;
-  --color-brand-cream: #F5EFEB;
-  --color-bg-primary: #F5EFEB;
-  --color-status-danger: #DE3737;
-  --color-status-success: #C7F150;
+:root {
+  --brand-primary: #114F3E;
+  --brand-secondary: #FCAFC8;
+  --brand-cream: #F5EFEB;
+  --bg-primary: #F5EFEB;
+  --status-danger: #DE3737;
+  --status-success: #C7F150;
   
-  --color-creative-green: #114F3E;
-  --color-creative-lime: #C7F150;
-  --color-creative-pink: #FCAFC8;
-  --color-creative-yellow: #FBC727;
-  --color-creative-cream: #F5EFEB;
+  --creative-green: #114F3E;
+  --creative-lime: #C7F150;
+  --creative-pink: #FCAFC8;
+  --creative-yellow: #FBC727;
+  --creative-cream: #F5EFEB;
+
+  /* Premium UI/UX Design System Semantic Tokens - Light Mode */
+  --bg-root: #F5EFEB;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #F8FAFC;
+  --bg-surface-elevated: #FFFFFF;
+  --border-subtle: #E2E8F0;
+  --text-title: #0F172A;
+  --text-body: #334155;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
+  --interactive-accent: #114F3E;
+  --interactive-hover: #0D3D30;
+  --input-bg: #FFFFFF;
+  --input-border: #CBD5E1;
+}
+
+
+
+@theme {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-cream: var(--brand-cream);
+  --color-bg-primary: var(--bg-primary);
+  --color-status-danger: var(--status-danger);
+  --color-status-success: var(--status-success);
+  
+  --color-creative-green: var(--creative-green);
+  --color-creative-lime: var(--creative-lime);
+  --color-creative-pink: var(--creative-pink);
+  --color-creative-yellow: var(--creative-yellow);
+  --color-creative-cream: var(--creative-cream);
  
   --font-monique: "Robuck", "Monique", "Montez", "Playfair Display", sans-serif;
   --font-serif: "Playfair Display", serif;
@@ -54,3 +86,6 @@
     animation: fadeIn 0.3s ease-out forwards;
   }
 }
+
+
+

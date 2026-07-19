@@ -206,7 +206,7 @@ export default function Doctors({}: DoctorsProps) {
 
       <AnimatePresence>
       {selectedDoctor && (
-        <div className="fixed inset-0 z-50 text-left">
+        <motion.div className="fixed inset-0 z-50 text-left">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -301,7 +301,7 @@ export default function Doctors({}: DoctorsProps) {
                 </button>
              </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
       </AnimatePresence>
 
@@ -335,7 +335,7 @@ export default function Doctors({}: DoctorsProps) {
 
       <AnimatePresence>
       {showDoctorForm && (
-        <div className="fixed inset-0 z-50 text-left">
+        <motion.div className="fixed inset-0 z-50 text-left">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -467,15 +467,11 @@ export default function Doctors({}: DoctorsProps) {
                       onClick={async () => {
                         try {
                           const { connectGoogleCalendar } = await import('../googleCalendar');
-                          const result = await connectGoogleCalendar();
-                          if (result) {
-                            // Automatically save the token to this doctor
-                            const updatedDoc = {
-                              ...selectedDoctor!,
-                              google_access_token: result.accessToken,
-                              google_connected_email: result.user.email || undefined
-                            };
-                            dataManager.saveDoctor(updatedDoc);
+                          const success = await connectGoogleCalendar(selectedDoctor?.id);
+                          if (success) {
+                            // Google callback saves to firestore and closes popup.
+                            // Retrieve updated doctor from local manager
+                            const updatedDoc = dataManager.getDoctors().find(d => d.id === selectedDoctor?.id) || selectedDoctor;
                             setSelectedDoctor(updatedDoc); // update local state
                             setToastMessage('Google Calendar conectado com sucesso!');
                             setTimeout(() => setToastMessage(''), 3000);
@@ -521,7 +517,7 @@ export default function Doctors({}: DoctorsProps) {
               </button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
       </AnimatePresence>
     </motion.div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download, Image as ImageIcon, Trash2, TrendingUp, TrendingDown, Minus, Filter, AlertTriangle } from 'lucide-react';
+import { X, Calendar, FileText, BookOpen, Clock, Phone, Mail, User, Shield, StickyNote, Edit3, Check, Download, Image as ImageIcon, Trash2, TrendingUp, TrendingDown, Minus, Filter, AlertTriangle, Sparkles } from 'lucide-react';
 import { Patient, dataManager, compressImage } from '../data';
 import Markdown from 'react-markdown';
 import jsPDF from 'jspdf';
@@ -87,6 +87,41 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
 
   const appointments = appointmentsStore.filter(a => a && a.date && a.patient_id === patient.id);
   const diaryEntries = diaryStore.filter(d => d && d.patient_id === patient.id).reverse();
+
+  const [aiSummary, setAiSummary] = useState(() => localStorage.getItem(`diary_summary_${patient.id}`) || '');
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const handleGenerateSummary = async () => {
+    setIsGeneratingSummary(true);
+    setSummaryError(null);
+    try {
+      const response = await fetch('/api/summarize-diary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patientName: patient.name,
+          entries: diaryEntries.slice(0, 15)
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao gerar o resumo do diário.');
+      }
+
+      const data = await response.json();
+      setAiSummary(data.result);
+      localStorage.setItem(`diary_summary_${patient.id}`, data.result);
+    } catch (err: any) {
+      console.error(err);
+      setSummaryError(err.message || 'Erro ao comunicar com o servidor.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
   const fakeData = extraData || {
     diag: 'Avaliação',
@@ -191,22 +226,21 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
   };
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50">
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
-          onClick={onClose}
-        ></motion.div>
-        <motion.div 
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl flex flex-col z-10 border-l border-slate-200"
-        >
+    <motion.div className="fixed inset-0 z-50">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+        onClick={onClose}
+      ></motion.div>
+      <motion.div 
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="fixed inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl flex flex-col z-10 border-l border-slate-200"
+      >
           {/* Header Profile Section */}
           <div className="bg-slate-50 px-8 py-6 border-b border-slate-200 flex flex-col items-start justify-between gap-4 shrink-0 relative">
             <button 
@@ -305,10 +339,10 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                         const norm = tag.toLowerCase().trim();
                         let colorClass = 'bg-slate-100 text-slate-700 border-slate-200';
                         if (norm.includes('risco')) colorClass = 'bg-rose-100 text-rose-700 border-rose-200';
-                        else if (norm.includes('acompanhamento')) colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                        else if (norm.includes('acompanhamento')) colorClass = 'bg-status-success/20 text-brand-primary border-status-success/40';
                         else if (norm.includes('financeiro') || norm.includes('pendente')) colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
                         else if (norm.includes('alta')) colorClass = 'bg-status-success/40 text-brand-primary border-status-success/50';
-                        else colorClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                        else colorClass = 'bg-status-success/20 text-brand-primary border-status-success/40';
                         
                         return (
                           <span key={idx} className={`text-xs uppercase font-bold px-2 py-0.5 rounded border ${colorClass} tracking-wide whitespace-nowrap leading-none`}>
@@ -425,7 +459,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="block text-slate-500 mb-1">Diagnóstico Inicial</span>
-                          <span className="font-semibold text-slate-900 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md inline-block">{fakeData.diag}</span>
+                          <span className="font-semibold text-slate-900 px-2 py-1 bg-status-success/20 text-brand-primary rounded-md inline-block">{fakeData.diag}</span>
                         </div>
                         <div>
                           <span className="block text-slate-500 mb-1">Total de Sessões</span>
@@ -572,12 +606,12 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                         .sort((a, b) => new Date(`${a.date.split('/').reverse().join('-')}T${a.start_time}`).getTime() - new Date(`${b.date.split('/').reverse().join('-')}T${b.start_time}`).getTime())
                         .slice(0, 3)
                         .map((appt, idx) => (
-                        <div key={appt.id || idx} className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 flex flex-col gap-1.5">
+                        <div key={appt.id || idx} className="bg-status-success/10 border border-brand-primary/20 rounded-xl p-3 flex flex-col gap-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-emerald-900">{appt.date}</span>
-                            <span className="text-[10px] uppercase tracking-wider font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{appt.start_time}</span>
+                            <span className="text-xs font-bold text-brand-primary">{appt.date}</span>
+                            <span className="text-[10px] uppercase tracking-wider font-bold bg-status-success/20 text-brand-primary px-2 py-0.5 rounded-full">{appt.start_time}</span>
                           </div>
-                          <span className="text-xs text-emerald-800 capitalize font-medium">{appt.type}</span>
+                          <span className="text-xs text-brand-primary/80 capitalize font-medium">{appt.type}</span>
                         </div>
                       ))}
                       {appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length === 0 && (
@@ -587,7 +621,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                       )}
                     </div>
                     {appointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length > 0 && (
-                      <button onClick={() => setActiveTab('consultas')} className="mt-4 w-full py-2 text-xs font-bold text-brand-primary bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer text-center">
+                      <button onClick={() => setActiveTab('consultas')} className="mt-4 w-full py-2 text-xs font-bold text-brand-primary bg-status-success/20 hover:bg-status-success/30 rounded-lg transition-colors cursor-pointer text-center">
                         Ver histórico completo
                       </button>
                     )}
@@ -710,14 +744,101 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                 
                 {/* Right Side: Entries List */}
                 <div className="flex-1">
-                  <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl mb-6 text-sm text-emerald-800 flex items-start gap-3">
+                  <div className="bg-status-success/10 border border-brand-primary/20 p-4 rounded-xl mb-6 text-sm text-brand-primary flex items-start gap-3">
                     <Check className="h-5 w-5 text-status-success shrink-0 mt-0.5" />
                     <div>
                       <strong className="font-semibold block mb-1">WhatsApp Integrado</strong>
                       Resumo das reflexões e sentimentos capturados via mensagens do paciente com o bot da clínica.
                     </div>
                   </div>
-                  
+
+                  {/* AI Summary Section */}
+                  {diaryEntries.length > 0 && (
+                    <div className="bg-gradient-to-br from-brand-primary/5 to-status-success/5 border border-brand-primary/15 rounded-2xl p-6 mb-6 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-status-success/20 text-brand-primary">
+                            <Sparkles className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-[15px]">Resumo Clínico Inteligente</h3>
+                            <p className="text-xs text-slate-500 font-medium">Síntese automatizada dos sentimentos e relatos do paciente</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleGenerateSummary}
+                          disabled={isGeneratingSummary}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer ${
+                            isGeneratingSummary 
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : aiSummary
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'
+                                : 'bg-status-success hover:bg-status-success/90 text-brand-primary border border-status-success/30'
+                          }`}
+                        >
+                          {isGeneratingSummary ? (
+                            <>
+                              <div className="h-3.5 w-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                              <span>Sintetizando...</span>
+                            </>
+                          ) : aiSummary ? (
+                            <>
+                              <Sparkles className="h-3.5 w-3.5 text-brand-primary" />
+                              <span>Regerar Resumo</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3.5 w-3.5" />
+                              <span>Gerar Resumo por IA</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {summaryError && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-xs flex items-center gap-2.5 mb-4">
+                          <AlertTriangle className="h-4 w-4 shrink-0" />
+                          <span className="font-medium">{summaryError}</span>
+                        </div>
+                      )}
+
+                      {isGeneratingSummary && !aiSummary && (
+                        <div className="space-y-3 animate-pulse py-2">
+                          <div className="h-4 bg-slate-200/60 rounded w-1/4"></div>
+                          <div className="h-3 bg-slate-200/60 rounded w-full"></div>
+                          <div className="h-3 bg-slate-200/60 rounded w-5/6"></div>
+                          <div className="h-3 bg-slate-200/60 rounded w-4/5"></div>
+                        </div>
+                      )}
+
+                      {aiSummary && (
+                        <div className={`relative bg-white border border-slate-200 rounded-xl p-5 text-sm leading-relaxed transition-all ${isGeneratingSummary ? 'opacity-50' : ''}`}>
+                          <div className="markdown-body prose prose-sm max-w-none text-slate-800">
+                            <Markdown
+                              components={{
+                                p: ({node, ...props}) => <p className="mb-3 last:mb-0 text-slate-700 leading-relaxed" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 last:mb-0 space-y-1 pl-1 text-slate-700" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 last:mb-0 space-y-1 pl-1 text-slate-700" {...props} />,
+                                h1: ({node, ...props}) => <h1 className="text-base font-bold mb-3 text-slate-900 border-b border-slate-100 pb-1 mt-4 first:mt-0" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="text-[14px] font-bold mb-2 text-slate-900 mt-3 first:mt-0" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="text-xs font-bold mb-1.5 text-slate-900 mt-3 first:mt-0" {...props} />,
+                                strong: ({node, ...props}) => <strong className="font-semibold text-slate-900" {...props} />
+                              }}
+                            >
+                              {aiSummary}
+                            </Markdown>
+                          </div>
+                        </div>
+                      )}
+
+                      {!aiSummary && !isGeneratingSummary && (
+                        <div className="text-center py-6 bg-slate-50/50 border border-slate-200 border-dashed rounded-xl">
+                          <p className="text-xs text-slate-500 font-medium">Nenhum resumo clínico gerado ainda. Clique no botão acima para analisar as últimas {Math.min(diaryEntries.length, 15)} reflexões.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {diaryEntries.length > 0 ? (
                     <div className="space-y-4">
                       {diaryEntries
@@ -739,7 +860,7 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
                                 </span>
                               )}
                               <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wide border ${
-                                entry.sentiment_score >= 0.5 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                entry.sentiment_score >= 0.5 ? 'bg-status-success/20 text-brand-primary border-status-success/40' :
                                 entry.sentiment_score <= -0.5 ? 'bg-rose-50 text-rose-700 border-rose-200' :
                                 'bg-slate-50 text-slate-700 border-slate-200'
                               }`}>
@@ -771,7 +892,6 @@ export default function PatientDetailModal({ patient, onClose, onDelete, extraDa
           </div>
         </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
+    </motion.div>
   );
 }

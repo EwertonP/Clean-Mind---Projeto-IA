@@ -185,23 +185,26 @@ export default function PatientMobileApp({ patient, onLogout }: PatientMobileApp
 
   // Load diary entries specifically for this patient
   useEffect(() => {
+    if (!patient || !patient.id) return;
     let unsub = () => {};
     // Dynamic import to avoid breaking when offline or if db changes
     import('firebase/firestore').then(({ collection, query, where, onSnapshot }) => {
       import('../firebase').then(({ db }) => {
         const q = query(collection(db, 'diary'), where('patient_id', '==', patient.id));
         unsub = onSnapshot(q, (snapshot) => {
-          const entries = snapshot.docs.map(d => d.data() as any);
+          const entries = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
           const sorted = entries.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
           setMessages(sorted);
           setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
           }, 100);
+        }, (error) => {
+          console.error("Error loading diary entries from firestore", error);
         });
       });
     });
     return () => unsub();
-  }, [patient.id]);
+  }, [patient?.id]);
 
   const handleSend = () => {
     if (!inputText.trim() && !selectedMood) return;
@@ -286,7 +289,7 @@ export default function PatientMobileApp({ patient, onLogout }: PatientMobileApp
            </div>
            
            <div className="flex items-center gap-4 text-[#54656f]">
-             <button onClick={onLogout} title="Sair da Conta" className="hover:text-red-500 transition-colors">
+             <button onClick={onLogout} title="Sair da Conta" className="hover:text-red-500 transition-colors p-1 rounded-lg cursor-pointer">
                <LogOut className="w-5 h-5" />
              </button>
            </div>
@@ -350,9 +353,9 @@ export default function PatientMobileApp({ patient, onLogout }: PatientMobileApp
               return (
                 <motion.div 
                   key={msg.id || index} 
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 350, damping: 22 }}
+                  initial={{ scale: 0.3, opacity: 0, y: 10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
                   className="self-end max-w-[85%] flex flex-col items-end origin-bottom-right"
                 >
                    <div className="bg-[#dcf8c6] p-2 px-3 rounded-xl rounded-tr-none shadow-sm text-[#111b21] relative flex gap-2 flex-wrap min-w-[120px]">

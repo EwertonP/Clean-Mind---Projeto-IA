@@ -968,7 +968,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
               )}
 
               {viewingRecord.ai_summary && (
-                <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-xl">
+                <div className="bg-status-success/20 border border-brand-primary/20 p-6 rounded-xl">
                   <h4 className="text-xs font-bold text-brand-primary uppercase tracking-widest mb-4 flex items-center space-x-2">
                     <Sparkles className="h-4 w-4" />
                     <span>Observações Auxiliares (CDS)</span>
@@ -992,7 +992,7 @@ export default function MedicalRecordEditor({ initialPatientId }: MedicalRecordE
                 </button>
                 <button 
                   onClick={() => handleEditRecord(viewingRecord)}
-                  className="text-brand-primary hover:text-emerald-700 hover:bg-emerald-50 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center space-x-2 cursor-pointer border border-transparent"
+                  className="text-brand-primary hover:text-brand-primary/70 hover:bg-status-success/20 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center space-x-2 cursor-pointer border border-transparent"
                 >
                   <Edit3 className="h-4 w-4" />
                   <span>Editar Prontuário</span>

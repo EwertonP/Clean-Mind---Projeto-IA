@@ -49,6 +49,11 @@ export default function App() {
   const [billingDraftParam, setBillingDraftParam] = useState<any>(null);
 
   useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('cm_dark_mode');
+  }, []);
+
+  useEffect(() => {
     // Sempre rolar para o topo ao trocar de aba
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
@@ -84,7 +89,7 @@ export default function App() {
           import('./firebase').then(({ db }) => {
             getDoc(doc(db, 'patients', patientSessionId)).then(docSnap => {
               if (docSnap.exists()) {
-                setPatientUser(docSnap.data());
+                setPatientUser({ id: docSnap.id, ...docSnap.data() } as any);
               } else {
                 localStorage.removeItem('cm_patient_session');
               }
@@ -237,11 +242,11 @@ export default function App() {
 
         {/* Navigation Sidebar (Desktop & Mobile Drawer) */}
         <aside className={`fixed top-0 left-0 h-screen w-[260px] flex-col border-r border-slate-100 bg-white z-40 shadow-xl md:shadow-none transform transition-transform duration-300 ease-in-out md:flex ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full md:translate-x-0 hidden'}`}>
-          <div className="flex flex-col flex-grow">
+          <div className="flex flex-col flex-grow h-full overflow-y-auto max-h-screen custom-scroll min-h-0 relative">
             
             {/* Brand Seal header */}
             <div className="p-6 pb-2 inline-flex items-center space-x-2 relative">
-              <div className="w-8 h-8 rounded-lg bg-[#C1E2A4] flex items-center justify-center text-[#192F28]">
+              <div className="w-8 h-8 rounded-lg bg-status-success flex items-center justify-center text-brand-primary">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h1 className="text-[28px] font-monique font-normal text-creative-green">CleanMind Hub</h1>
@@ -255,19 +260,62 @@ export default function App() {
             </div>
 
             {/* User Profile Card */}
-            <div className="px-4 mt-4">
-              <div className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-100 shadow-sm rounded-xl">
+            <div className="px-4 mt-4 relative">
+              <button 
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-100 shadow-sm rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
                 <div className="flex items-center min-w-0">
                   <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs shrink-0">
                     A
                   </div>
                   <div className="ml-3 min-w-0 text-left">
-                    <p className="text-sm font-bold text-slate-900 truncate">Agência</p>
+                    <p className="text-sm font-bold text-slate-900 truncate">Agência e Agentes</p>
                     <p className="text-xs text-slate-500 truncate">{doctor.email}</p>
                   </div>
                 </div>
-              </div>
+                <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                </svg>
+              </button>
             </div>
+
+            <AnimatePresence>
+              {isUserMenuOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mx-4 mt-2 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden z-50 absolute w-[228px] top-[140px]"
+                >
+                  <div className="p-2 space-y-1">
+                    <button 
+                      onClick={() => {
+                        setAgencyTab('clinics');
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-slate-700 hover:bg-slate-50"
+                    >
+                      <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                      <span>Configurações</span>
+                    </button>
+
+
+
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
+                    >
+                      <LogOut className="h-[18px] w-[18px] shrink-0" />
+                      <span>Sair do Hub</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Navigation Links list */}
             <nav className="flex-grow px-4 space-y-5 mt-8 overflow-y-auto pb-4">
@@ -293,10 +341,12 @@ export default function App() {
             </nav>
             
             {/* Footer Area Navigation */}
-            <div className="p-4 mt-auto">
+            <div className="p-4 mt-auto space-y-2">
+
+
                <button
                   onClick={handleLogout}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50"
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
                 >
                   <LogOut className="h-[18px] w-[18px] shrink-0" />
                   <span>Sair do Hub</span>
@@ -353,7 +403,7 @@ export default function App() {
         <div className="w-full max-w-5xl">
           <div className="flex justify-between items-center mb-8 px-2">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-[#C1E2A4] flex items-center justify-center font-bold text-slate-800 text-sm">
+              <div className="w-10 h-10 rounded-full bg-status-success flex items-center justify-center font-bold text-brand-primary text-sm">
                 C
               </div>
               <h1 className="text-[32px] font-monique font-normal text-creative-green">cleanmind.</h1>
@@ -395,17 +445,17 @@ export default function App() {
 
       {/* Navigation Sidebar (Desktop & Mobile Drawer) */}
       <aside className={`fixed top-0 left-0 h-screen w-[260px] flex-col border-r border-slate-100 bg-white z-40 shadow-xl md:shadow-none transform transition-transform duration-300 ease-in-out md:flex ${isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full md:translate-x-0 hidden'}`}>
-        <div className="flex flex-col flex-grow">
+        <div className="flex flex-col flex-grow h-full overflow-y-auto max-h-screen custom-scroll min-h-0 relative">
           
           {/* Brand Seal header */}
           <div className="p-6 pb-2 inline-flex items-center space-x-2 relative">
-            <img src="/cleanmind_logo.png" alt="CleanMind" className="h-8 object-contain" onError={(e) => {
+            <img src="/CleanMind Logo.png" alt="CleanMind" className="h-8 object-contain" onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
               const fallback = document.getElementById('logo-fallback-desktop');
               if (fallback) fallback.style.display = 'flex';
             }} />
             <div id="logo-fallback-desktop" className="hidden items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-[#C1E2A4] flex items-center justify-center text-[#192F28]">
+              <div className="w-8 h-8 rounded-lg bg-status-success flex items-center justify-center text-brand-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
                   <path d="M12 21a9 9 0 0 0 8-12.8A9 9 0 0 0 5.4 6" />
                   <path d="M21 3L9 15" />
@@ -425,7 +475,7 @@ export default function App() {
           </div>
 
           {/* User Profile Card */}
-          <div className="px-4 mt-4">
+          <div className="px-4 mt-4 relative">
             <button 
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-100 shadow-sm rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
@@ -439,7 +489,7 @@ export default function App() {
                   </div>
                 )}
                 <div className="ml-3 min-w-0 text-left">
-                  <p className="text-sm font-bold text-slate-900 truncate">{doctor?.name || 'Médico(a)'}</p>
+                  <p className="text-sm font-bold text-slate-900 truncate">Agência e Agentes</p>
                   <p className="text-xs text-slate-500 truncate">{doctor?.email || 'email@exemplo.com'}</p>
                 </div>
               </div>
@@ -463,11 +513,14 @@ export default function App() {
                       handleNavigateWithParams('configuracoes');
                       setIsUserMenuOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'configuracoes' ? 'bg-[#192F28] text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50'}`}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer ${activeTab === 'configuracoes' ? 'bg-brand-primary text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50'}`}
                   >
                     <SlidersHorizontal className="h-4 w-4 shrink-0" />
                     <span>Configurações</span>
                   </button>
+
+
+
                   <a
                     href="https://wa.me/5511999999999"
                     target="_blank"
@@ -569,13 +622,15 @@ export default function App() {
           </nav>
           
           {/* Footer Area Navigation */}
-          <div className="p-4 mt-auto">
+          <div className="p-4 mt-auto space-y-2">
+
+
              <button
                 onClick={() => {
                   handleLogout();
                   setIsUserMenuOpen(false);
                 }}
-                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50"
+                className="w-full text-left px-3 py-2 rounded-xl text-sm font-medium flex items-center space-x-3 transition-all cursor-pointer text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
               >
                 <LogOut className="h-[18px] w-[18px] shrink-0" />
                 <span>Logout</span>
@@ -599,7 +654,7 @@ export default function App() {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <img src="/cleanmind_logo.png" alt="cleanmind." className="h-6 object-contain" onError={(e) => {
+              <img src="/CleanMind Logo.png" alt="cleanmind." className="h-6 object-contain" onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
                 const fallback = document.getElementById('logo-fallback-mobile');
                 if (fallback) fallback.style.display = 'inline';
@@ -617,7 +672,7 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder="Busca global (pacientes, prontuários)..." 
-                className="pl-9 pr-4 py-2 w-full text-sm outline-none border border-slate-200 rounded-full focus:ring-2 focus:ring-[#C1E2A4]/50 focus:border-[#C1E2A4] transition-all bg-white"
+                className="pl-9 pr-4 py-2 w-full text-sm outline-none border border-slate-200 rounded-full focus:ring-2 focus:ring-status-success/50 focus:border-status-success transition-all bg-white"
                 onChange={(e) => {
                   if (activeTab !== 'paciente' && e.target.value.length > 2) {
                      handleNavigateWithParams('paciente');
@@ -631,47 +686,57 @@ export default function App() {
 
         {/* Active viewport content box */}
         <main className="flex-grow p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto pb-8">
-          {activeTab === 'dashboard' && (
-            <Dashboard 
-              onNavigate={handleNavigateWithParams} 
-            />
-          )}
-          {activeTab === 'agenda' && (
-            <Agenda 
-              onNavigate={handleNavigateWithParams}
-              initialOpenNewModal={openNewAppointmentParam}
-            />
-          )}
-          {activeTab === 'prontuario' && (
-            <MedicalRecordEditor 
-              initialPatientId={selectedPatientParam} 
-            />
-          )}
-          {activeTab === 'financeiro' && (
-            <Billing 
-              initialDraft={billingDraftParam}
-              onClearDraft={() => setBillingDraftParam(null)}
-            />
-          )}
-          {activeTab === 'diario' && (
-            <DiaryDashboard />
-          )}
-          {activeTab === 'paciente' && (
-            <PatientDiaryApp 
-            />
-          )}
-          {activeTab === 'medicos' && (
-            <Doctors 
-            />
-          )}
-          {activeTab === 'alertas' && (
-            <AlertCenter 
-              onNavigate={handleNavigateWithParams} 
-            />
-          )}
-          {activeTab === 'configuracoes' && (
-            <Settings />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+            >
+              {activeTab === 'dashboard' && (
+                <Dashboard 
+                  onNavigate={handleNavigateWithParams} 
+                />
+              )}
+              {activeTab === 'agenda' && (
+                <Agenda 
+                  onNavigate={handleNavigateWithParams}
+                  initialOpenNewModal={openNewAppointmentParam}
+                />
+              )}
+              {activeTab === 'prontuario' && (
+                <MedicalRecordEditor 
+                  initialPatientId={selectedPatientParam} 
+                />
+              )}
+              {activeTab === 'financeiro' && (
+                <Billing 
+                  initialDraft={billingDraftParam}
+                  onClearDraft={() => setBillingDraftParam(null)}
+                />
+              )}
+              {activeTab === 'diario' && (
+                <DiaryDashboard />
+              )}
+              {activeTab === 'paciente' && (
+                <PatientDiaryApp 
+                />
+              )}
+              {activeTab === 'medicos' && (
+                <Doctors 
+                />
+              )}
+              {activeTab === 'alertas' && (
+                <AlertCenter 
+                  onNavigate={handleNavigateWithParams} 
+                />
+              )}
+              {activeTab === 'configuracoes' && (
+                <Settings />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
       </div>

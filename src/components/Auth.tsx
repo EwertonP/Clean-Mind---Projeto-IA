@@ -150,7 +150,8 @@ export default function Auth({ onAuthSuccess, onPatientAuthSuccess }: AuthProps)
             
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
-              patient = snapshot.docs[0].data() as Patient;
+              const docSnap = snapshot.docs[0];
+              patient = { id: docSnap.id, ...docSnap.data() } as Patient;
             }
           } catch (err) {
             console.error("Failed to fetch patient from firestore", err);
